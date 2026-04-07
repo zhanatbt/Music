@@ -108,6 +108,42 @@ public class AdminPresenter
         }
     }
 
+    public Task PlaySelectedTrackAsync()
+    {
+        if (_view.SelectedTrack is null)
+        {
+            _view.ShowMessage("Выберите трек в каталоге.", "Ошибка");
+            return Task.CompletedTask;
+        }
+
+        if (string.IsNullOrWhiteSpace(_view.SelectedTrack.PreviewUrl))
+        {
+            _view.ShowMessage("У выбранного трека нет preview-ссылки.", "Информация");
+            return Task.CompletedTask;
+        }
+
+        _view.PlayPreview(_view.SelectedTrack.PreviewUrl, $"{_view.SelectedTrack.Artist} - {_view.SelectedTrack.Title}");
+        return Task.CompletedTask;
+    }
+
+    public Task PlaySelectedDeezerTrackAsync()
+    {
+        if (_view.SelectedDeezerTrack is null)
+        {
+            _view.ShowMessage("Выберите трек из результатов Deezer.", "Ошибка");
+            return Task.CompletedTask;
+        }
+
+        if (string.IsNullOrWhiteSpace(_view.SelectedDeezerTrack.PreviewUrl))
+        {
+            _view.ShowMessage("У выбранного Deezer-трека нет preview-ссылки.", "Информация");
+            return Task.CompletedTask;
+        }
+
+        _view.PlayPreview(_view.SelectedDeezerTrack.PreviewUrl, $"{_view.SelectedDeezerTrack.ArtistName} - {_view.SelectedDeezerTrack.Title}");
+        return Task.CompletedTask;
+    }
+
     private async Task ReloadAsync()
     {
         _view.SetGenres(await _catalogService.GetGenresAsync());

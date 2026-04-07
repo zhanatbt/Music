@@ -27,6 +27,37 @@ public class TrackRepository : ITrackRepository
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
     }
 
+    public async Task<Track?> FindDuplicateAsync(
+        string title,
+        int artistId,
+        int? albumId,
+        string? deezerId,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedTitle = title.Trim();
+        var normalizedDeezerId = string.IsNullOrWhiteSpace(deezerId) ? null : deezerId.Trim();
+
+        var query = IncludeGraph(_context.Tracks).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(normalizedDeezerId))
+        {
+            var byDeezerId = await query.FirstOrDefaultAsync(
+                t => t.DeezerId != null && t.DeezerId == normalizedDeezerId,
+                cancellationToken);
+
+            if (byDeezerId is not null)
+            {
+                return byDeezerId;
+            }
+        }
+
+        return await query.FirstOrDefaultAsync(
+            t => t.ArtistId == artistId &&
+                 t.AlbumId == albumId &&
+                 t.Title == normalizedTitle,
+            cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Track>> SearchAsync(string? query, int? genreId, int? categoryId, CancellationToken cancellationToken = default)
     {
         var normalized = query?.Trim();

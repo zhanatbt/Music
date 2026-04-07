@@ -1,3 +1,4 @@
+using AxWMPLib;
 using MusicApp.Application.DTOs;
 using MusicApp.Application.Services;
 using MusicApp.UI.Presenters;
@@ -23,14 +24,17 @@ public class AdminForm : Form, IAdminView
     private ComboBox _cmbCategory = null!;
     private TextBox _txtDeezerQuery = null!;
     private DataGridView _gridDeezer = null!;
+    private DataGridView _gridTracks = null!;
+    private Label _lblNowPlaying = null!;
+    private AxWindowsMediaPlayer _player = null!;
 
     public AdminForm(AdminCatalogService catalogService, UserSessionDto session)
     {
         _presenter = new AdminPresenter(this, catalogService);
 
         Text = $"Music App - Admin Panel ({session.Username})";
-        Width = 1200;
-        Height = 760;
+        Width = 1240;
+        Height = 820;
         StartPosition = FormStartPosition.CenterParent;
 
         var tabControl = new TabControl { Dock = DockStyle.Fill };
@@ -39,8 +43,7 @@ public class AdminForm : Form, IAdminView
         manageTab.Controls.Add(BuildManageLayout());
 
         var tracksTab = new TabPage("Треки");
-        var tracksGrid = CreateGrid(_tracksSource);
-        tracksTab.Controls.Add(tracksGrid);
+        tracksTab.Controls.Add(BuildTracksLayout());
 
         var usersTab = new TabPage("Пользователи");
         var usersGrid = CreateGrid(_usersSource);
@@ -55,6 +58,7 @@ public class AdminForm : Form, IAdminView
         tabControl.TabPages.Add(deezerTab);
 
         Controls.Add(tabControl);
+        Controls.Add(BuildPlayerPanel());
 
         Load += async (_, _) => await _presenter.LoadAsync();
     }
@@ -68,19 +72,8 @@ public class AdminForm : Form, IAdminView
     public int? SelectedGenreId => (_cmbGenre.SelectedItem as GenreDto)?.Id;
     public int? SelectedCategoryId => (_cmbCategory.SelectedItem as CategoryDto)?.Id;
     public string DeezerQuery => _txtDeezerQuery.Text;
-
-    public DeezerTrackDto? SelectedDeezerTrack
-    {
-        get
-        {
-            if (_gridDeezer.CurrentRow?.DataBoundItem is DeezerTrackDto track)
-            {
-                return track;
-            }
-
-            return null;
-        }
-    }
+    public TrackDto? SelectedTrack => _gridTracks.CurrentRow?.DataBoundItem as TrackDto;
+    public DeezerTrackDto? SelectedDeezerTrack => _gridDeezer.CurrentRow?.DataBoundItem as DeezerTrackDto;
 
     public void SetGenres(IReadOnlyList<GenreDto> genres)
     {
@@ -101,6 +94,10 @@ public class AdminForm : Form, IAdminView
     public void SetTracks(IReadOnlyList<TrackDto> tracks)
     {
         _tracksSource.DataSource = tracks;
+        if (_gridTracks is not null)
+        {
+            _gridTracks.DataSource = _tracksSource;
+        }
     }
 
     public void SetUsers(IReadOnlyList<UserSessionDto> users)
@@ -112,6 +109,13 @@ public class AdminForm : Form, IAdminView
     {
         _deezerSource.DataSource = tracks;
         _gridDeezer.DataSource = _deezerSource;
+    }
+
+    public void PlayPreview(string previewUrl, string trackTitle)
+    {
+        _lblNowPlaying.Text = $"Сейчас играет: {trackTitle}";
+        _player.URL = previewUrl;
+        _player.Ctlcontrols.play();
     }
 
     public void ShowMessage(string message, string title = "Music App")
@@ -126,12 +130,12 @@ public class AdminForm : Form, IAdminView
         _txtTrackTitle.Clear();
         _txtArtist.Clear();
         _txtAlbum.Clear();
-        _numDuration.Value = 0;
+        _numDuration.Value = 180;
     }
 
     private Control BuildManageLayout()
     {
-        var root = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, SplitterDistance = 250 };
+        var root = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, SplitterDistance = 260 };
 
         var top = new TableLayoutPanel
         {
@@ -192,19 +196,46 @@ public class AdminForm : Form, IAdminView
         return root;
     }
 
+    private Control BuildTracksLayout()
+    {
+        var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
+        var btnPlaySelected = new Button { Text = "Прослушать выбранный", Left = 12, Top = 10, Width = 180 };
+        _gridTracks = new DataGridView
+        {
+            Top = 48,
+            Left = 12,
+            Width = 1140,
+            Height = 520,
+            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+            ReadOnly = true,
+            AutoGenerateColumns = true,
+            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+            MultiSelect = false,
+            AllowUserToAddRows = false,
+            DataSource = _tracksSource
+        };
+
+        panel.Controls.Add(btnPlaySelected);
+        panel.Controls.Add(_gridTracks);
+
+        btnPlaySelected.Click += async (_, _) => await _presenter.PlaySelectedTrackAsync();
+        return panel;
+    }
+
     private Control BuildDeezerLayout()
     {
         var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
         _txtDeezerQuery = new TextBox { Left = 12, Top = 12, Width = 420 };
         var btnSearch = new Button { Text = "Поиск Deezer", Left = 440, Top = 10, Width = 120 };
         var btnImport = new Button { Text = "Импортировать", Left = 570, Top = 10, Width = 130 };
+        var btnPlayPreview = new Button { Text = "Слушать preview", Left = 710, Top = 10, Width = 140 };
 
         _gridDeezer = new DataGridView
         {
             Top = 48,
             Left = 12,
             Width = 1120,
-            Height = 580,
+            Height = 520,
             Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
             ReadOnly = true,
             AutoGenerateColumns = true,
@@ -217,12 +248,35 @@ public class AdminForm : Form, IAdminView
         panel.Controls.Add(_txtDeezerQuery);
         panel.Controls.Add(btnSearch);
         panel.Controls.Add(btnImport);
+        panel.Controls.Add(btnPlayPreview);
         panel.Controls.Add(_gridDeezer);
 
         btnSearch.Click += async (_, _) => await _presenter.SearchDeezerAsync();
         btnImport.Click += async (_, _) => await _presenter.ImportSelectedDeezerTrackAsync();
+        btnPlayPreview.Click += async (_, _) => await _presenter.PlaySelectedDeezerTrackAsync();
 
         return panel;
+    }
+
+    private Control BuildPlayerPanel()
+    {
+        _player = new AxWindowsMediaPlayer();
+        ((System.ComponentModel.ISupportInitialize)_player).BeginInit();
+        _player.Enabled = true;
+        _player.Dock = DockStyle.Fill;
+        ((System.ComponentModel.ISupportInitialize)_player).EndInit();
+
+        _lblNowPlaying = new Label
+        {
+            Dock = DockStyle.Top,
+            Height = 24,
+            Text = "Сейчас играет: ничего не выбрано"
+        };
+
+        var playerPanel = new Panel { Dock = DockStyle.Bottom, Height = 140, Padding = new Padding(12) };
+        playerPanel.Controls.Add(_player);
+        playerPanel.Controls.Add(_lblNowPlaying);
+        return playerPanel;
     }
 
     private static DataGridView CreateGrid(object dataSource)

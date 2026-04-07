@@ -39,6 +39,23 @@ public class FakeTrackRepository : ITrackRepository
         return Task.FromResult(_tracks.FirstOrDefault(x => x.Id == id));
     }
 
+    public Task<Track?> FindDuplicateAsync(string title, int artistId, int? albumId, string? deezerId, CancellationToken cancellationToken = default)
+    {
+        if (!string.IsNullOrWhiteSpace(deezerId))
+        {
+            var byDeezer = _tracks.FirstOrDefault(x => x.DeezerId == deezerId);
+            if (byDeezer is not null)
+            {
+                return Task.FromResult<Track?>(byDeezer);
+            }
+        }
+
+        return Task.FromResult(_tracks.FirstOrDefault(x =>
+            x.Title == title.Trim() &&
+            x.ArtistId == artistId &&
+            x.AlbumId == albumId));
+    }
+
     public Task AddAsync(Track track, CancellationToken cancellationToken = default)
     {
         _tracks.Add(track);

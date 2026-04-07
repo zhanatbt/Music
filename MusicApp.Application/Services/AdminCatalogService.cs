@@ -135,6 +135,18 @@ public class AdminCatalogService
             }
         }
 
+        var duplicateTrack = await _trackRepository.FindDuplicateAsync(
+            request.Title,
+            artist.Id,
+            album?.Id,
+            request.DeezerId,
+            cancellationToken);
+
+        if (duplicateTrack is not null)
+        {
+            return OperationResult.Fail("Такой трек уже есть в каталоге.");
+        }
+
         var track = new Track
         {
             Title = request.Title.Trim(),

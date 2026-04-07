@@ -13,12 +13,14 @@ public interface IAdminView
     int? SelectedGenreId { get; }
     int? SelectedCategoryId { get; }
     string DeezerQuery { get; }
+    TrackDto? SelectedTrack { get; }
     DeezerTrackDto? SelectedDeezerTrack { get; }
     void SetGenres(IReadOnlyList<GenreDto> genres);
     void SetCategories(IReadOnlyList<CategoryDto> categories);
     void SetTracks(IReadOnlyList<TrackDto> tracks);
     void SetUsers(IReadOnlyList<UserSessionDto> users);
     void SetDeezerResults(IReadOnlyList<DeezerTrackDto> tracks);
+    void PlayPreview(string previewUrl, string trackTitle);
     void ShowMessage(string message, string title = "Music App");
     void ClearEntryFields();
 }
