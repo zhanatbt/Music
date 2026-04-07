@@ -10,11 +10,14 @@ public class MainForm : Form, IMainView
     private readonly MainPresenter _presenter;
     private readonly BindingSource _tracksSource = new();
     private readonly BindingSource _playlistsSource = new();
+    private readonly BindingSource _playlistTracksSource = new();
+    private bool _suppressPlaylistSelectionChanged;
 
     private readonly TextBox _txtSearch;
-    private readonly TextBox _txtNewPlaylist;
+    private TextBox _txtNewPlaylist = null!;
     private readonly DataGridView _gridTracks;
-    private readonly DataGridView _gridPlaylists;
+    private DataGridView _gridPlaylists = null!;
+    private DataGridView _gridPlaylistTracks = null!;
     private readonly Label _lblNowPlaying;
     private readonly AxWindowsMediaPlayer _player;
 
@@ -23,8 +26,8 @@ public class MainForm : Form, IMainView
         _presenter = new MainPresenter(this, musicLibraryService, session);
 
         Text = $"Music App - Пользователь {session.Username}";
-        Width = 1180;
-        Height = 700;
+        Width = 1280;
+        Height = 760;
         StartPosition = FormStartPosition.CenterParent;
 
         var header = new Panel { Dock = DockStyle.Top, Height = 56, Padding = new Padding(12) };
@@ -34,48 +37,18 @@ public class MainForm : Form, IMainView
         var btnAddToPlaylist = new Button { Text = "Добавить в выбранный плейлист", Left = 710, Top = 12, Width = 220 };
         header.Controls.AddRange([_txtSearch, btnSearch, btnPlay, btnAddToPlaylist]);
 
-        var leftPanel = new Panel { Dock = DockStyle.Left, Width = 320, Padding = new Padding(12) };
-        leftPanel.Controls.Add(new Label { Text = "Плейлисты", Dock = DockStyle.Top, Height = 24 });
-        leftPanel.Controls.Add(new Label
+        var leftSplit = new SplitContainer
         {
-            Text = "Выбери плейлист в таблице ниже, потом выдели трек справа и нажми кнопку сверху.",
-            Dock = DockStyle.Top,
-            Height = 52
-        });
-
-        _gridPlaylists = new DataGridView
-        {
-            Dock = DockStyle.Fill,
-            ReadOnly = true,
-            AutoGenerateColumns = false,
-            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-            MultiSelect = false,
-            AllowUserToAddRows = false,
-            AllowUserToDeleteRows = false,
-            AllowUserToResizeRows = false,
-            RowHeadersVisible = false
+            Dock = DockStyle.Left,
+            Width = 420,
+            Orientation = Orientation.Horizontal,
+            SplitterDistance = 300
         };
-        _gridPlaylists.Columns.Add(new DataGridViewTextBoxColumn
-        {
-            DataPropertyName = nameof(PlaylistDto.Name),
-            HeaderText = "Плейлист",
-            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
-        });
-        _gridPlaylists.Columns.Add(new DataGridViewTextBoxColumn
-        {
-            DataPropertyName = nameof(PlaylistDto.TrackCount),
-            HeaderText = "Треков",
-            Width = 70
-        });
-        _gridPlaylists.DataSource = _playlistsSource;
-        leftPanel.Controls.Add(_gridPlaylists);
 
-        var playlistBottom = new Panel { Dock = DockStyle.Bottom, Height = 72 };
-        _txtNewPlaylist = new TextBox { Dock = DockStyle.Top };
-        var btnCreatePlaylist = new Button { Text = "Создать плейлист", Dock = DockStyle.Bottom, Height = 32 };
-        playlistBottom.Controls.Add(_txtNewPlaylist);
-        playlistBottom.Controls.Add(btnCreatePlaylist);
-        leftPanel.Controls.Add(playlistBottom);
+        leftSplit.Panel1.Padding = new Padding(12, 12, 6, 6);
+        leftSplit.Panel2.Padding = new Padding(12, 6, 6, 12);
+        leftSplit.Panel1.Controls.Add(BuildPlaylistsPanel());
+        leftSplit.Panel2.Controls.Add(BuildPlaylistTracksPanel());
 
         _gridTracks = new DataGridView
         {
@@ -101,49 +74,111 @@ public class MainForm : Form, IMainView
             Height = 24,
             Text = "Сейчас играет: ничего не выбрано"
         };
-
         playerPanel.Controls.Add(_player);
         playerPanel.Controls.Add(_lblNowPlaying);
 
         Controls.Add(_gridTracks);
         Controls.Add(playerPanel);
-        Controls.Add(leftPanel);
+        Controls.Add(leftSplit);
         Controls.Add(header);
 
         Load += async (_, _) => await _presenter.LoadAsync();
         btnSearch.Click += async (_, _) => await _presenter.SearchAsync();
-        btnCreatePlaylist.Click += async (_, _) => await _presenter.CreatePlaylistAsync();
         btnAddToPlaylist.Click += async (_, _) => await _presenter.AddSelectedTrackToPlaylistAsync();
         btnPlay.Click += async (_, _) => await _presenter.PlayPreviewAsync();
     }
 
+    private Control BuildPlaylistsPanel()
+    {
+        var panel = new Panel { Dock = DockStyle.Fill };
+
+        var topPanel = new Panel { Dock = DockStyle.Top, Height = 68 };
+        var titleLabel = new Label
+        {
+            Text = "Плейлисты",
+            Dock = DockStyle.Top,
+            Height = 24
+        };
+        var hintLabel = new Label
+        {
+            Text = "Выбери плейлист ниже. Его треки появятся в нижней таблице.",
+            Dock = DockStyle.Fill
+        };
+        topPanel.Controls.Add(hintLabel);
+        topPanel.Controls.Add(titleLabel);
+
+        var bottomPanel = new Panel { Dock = DockStyle.Bottom, Height = 72 };
+        _txtNewPlaylist = new TextBox { Dock = DockStyle.Top };
+        var btnCreatePlaylist = new Button { Text = "Создать плейлист", Dock = DockStyle.Bottom, Height = 32 };
+        btnCreatePlaylist.Click += async (_, _) => await _presenter.CreatePlaylistAsync();
+        bottomPanel.Controls.Add(_txtNewPlaylist);
+        bottomPanel.Controls.Add(btnCreatePlaylist);
+
+        _gridPlaylists = new DataGridView
+        {
+            Dock = DockStyle.Fill,
+            ReadOnly = true,
+            AutoGenerateColumns = false,
+            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+            MultiSelect = false,
+            AllowUserToAddRows = false,
+            AllowUserToDeleteRows = false,
+            AllowUserToResizeRows = false,
+            RowHeadersVisible = false,
+            DataSource = _playlistsSource
+        };
+        _gridPlaylists.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            DataPropertyName = nameof(PlaylistDto.Name),
+            HeaderText = "Плейлист",
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
+        });
+        _gridPlaylists.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            DataPropertyName = nameof(PlaylistDto.TrackCount),
+            HeaderText = "Треков",
+            Width = 70
+        });
+        _gridPlaylists.SelectionChanged += GridPlaylists_SelectionChanged;
+
+        panel.Controls.Add(_gridPlaylists);
+        panel.Controls.Add(bottomPanel);
+        panel.Controls.Add(topPanel);
+        return panel;
+    }
+
+    private Control BuildPlaylistTracksPanel()
+    {
+        var panel = new Panel { Dock = DockStyle.Fill };
+
+        var titleLabel = new Label
+        {
+            Text = "Треки выбранного плейлиста",
+            Dock = DockStyle.Top,
+            Height = 24
+        };
+
+        _gridPlaylistTracks = new DataGridView
+        {
+            Dock = DockStyle.Fill,
+            ReadOnly = true,
+            AutoGenerateColumns = true,
+            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+            MultiSelect = false,
+            AllowUserToAddRows = false,
+            DataSource = _playlistTracksSource
+        };
+
+        panel.Controls.Add(_gridPlaylistTracks);
+        panel.Controls.Add(titleLabel);
+        return panel;
+    }
+
     public string SearchText => _txtSearch.Text;
 
-    public int? SelectedTrackId
-    {
-        get
-        {
-            if (_gridTracks.CurrentRow?.DataBoundItem is TrackDto track)
-            {
-                return track.Id;
-            }
+    public int? SelectedTrackId => _gridTracks.CurrentRow?.DataBoundItem is TrackDto track ? track.Id : null;
 
-            return null;
-        }
-    }
-
-    public int? SelectedPlaylistId
-    {
-        get
-        {
-            if (_gridPlaylists.CurrentRow?.DataBoundItem is PlaylistDto playlist)
-            {
-                return playlist.Id;
-            }
-
-            return null;
-        }
-    }
+    public int? SelectedPlaylistId => _gridPlaylists.CurrentRow?.DataBoundItem is PlaylistDto playlist ? playlist.Id : null;
 
     public string NewPlaylistName => _txtNewPlaylist.Text;
 
@@ -154,15 +189,24 @@ public class MainForm : Form, IMainView
 
     public void SetPlaylists(IReadOnlyList<PlaylistDto> playlists)
     {
+        _suppressPlaylistSelectionChanged = true;
         _playlistsSource.DataSource = playlists.ToList();
+        _suppressPlaylistSelectionChanged = false;
+    }
+
+    public void SetPlaylistTracks(IReadOnlyList<TrackDto> tracks)
+    {
+        _playlistTracksSource.DataSource = tracks.ToList();
     }
 
     public void AddPlaylist(PlaylistDto playlist)
     {
+        _suppressPlaylistSelectionChanged = true;
         var playlists = (_playlistsSource.DataSource as List<PlaylistDto>) ?? [];
         playlists.Add(playlist);
         _playlistsSource.DataSource = null;
         _playlistsSource.DataSource = playlists;
+        _suppressPlaylistSelectionChanged = false;
     }
 
     public void SelectPlaylistByName(string playlistName)
@@ -203,5 +247,15 @@ public class MainForm : Form, IMainView
     public void ShowMessage(string message, string title = "Music App")
     {
         MessageBox.Show(this, message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
+
+    private async void GridPlaylists_SelectionChanged(object? sender, EventArgs e)
+    {
+        if (_suppressPlaylistSelectionChanged)
+        {
+            return;
+        }
+
+        await _presenter.PlaylistSelectionChangedAsync();
     }
 }

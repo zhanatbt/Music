@@ -10,6 +10,7 @@ public interface IMainView
     string NewPlaylistName { get; }
     void SetTracks(IReadOnlyList<TrackDto> tracks);
     void SetPlaylists(IReadOnlyList<PlaylistDto> playlists);
+    void SetPlaylistTracks(IReadOnlyList<TrackDto> tracks);
     void AddPlaylist(PlaylistDto playlist);
     void SelectPlaylistByName(string playlistName);
     void ClearNewPlaylistName();

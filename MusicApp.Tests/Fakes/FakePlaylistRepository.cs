@@ -23,6 +23,17 @@ public class FakePlaylistRepository : IPlaylistRepository
         return Task.FromResult(_playlists.FirstOrDefault(x => x.UserId == userId && x.Name == name));
     }
 
+    public Task<IReadOnlyList<Track>> GetTracksByPlaylistIdAsync(int playlistId, CancellationToken cancellationToken = default)
+    {
+        var playlist = _playlists.FirstOrDefault(x => x.Id == playlistId);
+        var tracks = playlist?.PlaylistTracks
+            .Where(x => x.Track is not null)
+            .Select(x => x.Track!)
+            .ToList() ?? [];
+
+        return Task.FromResult((IReadOnlyList<Track>)tracks);
+    }
+
     public Task AddAsync(Playlist playlist, CancellationToken cancellationToken = default)
     {
         if (playlist.Id == 0)

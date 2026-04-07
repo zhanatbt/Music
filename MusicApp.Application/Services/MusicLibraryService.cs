@@ -29,6 +29,12 @@ public class MusicLibraryService
         return playlists.Select(LookupMapper.ToDto).ToList();
     }
 
+    public async Task<IReadOnlyList<TrackDto>> GetPlaylistTracksAsync(int playlistId, CancellationToken cancellationToken = default)
+    {
+        var tracks = await _playlistRepository.GetTracksByPlaylistIdAsync(playlistId, cancellationToken);
+        return tracks.Select(TrackMapper.ToDto).ToList();
+    }
+
     public async Task<OperationResult<PlaylistDto>> CreatePlaylistAsync(int userId, string playlistName, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(playlistName))

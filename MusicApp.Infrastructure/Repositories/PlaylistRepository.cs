@@ -37,6 +37,19 @@ public class PlaylistRepository : IPlaylistRepository
             .FirstOrDefaultAsync(x => x.UserId == userId && x.Name == name, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Track>> GetTracksByPlaylistIdAsync(int playlistId, CancellationToken cancellationToken = default)
+    {
+        return await _context.PlaylistTracks
+            .Where(x => x.PlaylistId == playlistId)
+            .Include(x => x.Track)!.ThenInclude(x => x!.Artist)
+            .Include(x => x.Track)!.ThenInclude(x => x!.Album)
+            .Include(x => x.Track)!.ThenInclude(x => x!.Genre)
+            .Include(x => x.Track)!.ThenInclude(x => x!.Category)
+            .OrderBy(x => x.AddedAtUtc)
+            .Select(x => x.Track!)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task AddAsync(Playlist playlist, CancellationToken cancellationToken = default)
     {
         _context.Playlists.Add(playlist);
