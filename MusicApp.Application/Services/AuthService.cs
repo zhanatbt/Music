@@ -38,7 +38,7 @@ public class AuthService
         });
     }
 
-    public async Task<OperationResult> RegisterAsync(string username, string password, string confirmPassword, bool isAdmin = false, CancellationToken cancellationToken = default)
+    public async Task<OperationResult> RegisterAsync(string username, string password, string confirmPassword, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(username))
         {
@@ -66,7 +66,7 @@ public class AuthService
         {
             Username = normalized,
             PasswordHash = _passwordHasher.Hash(password),
-            Role = isAdmin ? UserRole.Admin : UserRole.User
+            Role = UserRole.User
         };
 
         await _userRepository.AddAsync(user, cancellationToken);

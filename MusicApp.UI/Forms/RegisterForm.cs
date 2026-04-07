@@ -9,7 +9,6 @@ public class RegisterForm : Form, IRegisterView
     private readonly TextBox _txtUsername;
     private readonly TextBox _txtPassword;
     private readonly TextBox _txtConfirmPassword;
-    private readonly CheckBox _chkAdmin;
 
     public RegisterForm(AuthService authService)
     {
@@ -40,8 +39,6 @@ public class RegisterForm : Form, IRegisterView
         _txtConfirmPassword = new TextBox { UseSystemPasswordChar = true };
         layout.Controls.Add(_txtConfirmPassword, 0, 5);
 
-        _chkAdmin = new CheckBox { Text = "Создать как администратора" };
-        layout.Controls.Add(_chkAdmin, 0, 6);
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill };
         var btnSave = new Button { Text = "Создать", Width = 120 };
@@ -59,7 +56,6 @@ public class RegisterForm : Form, IRegisterView
     public string Username => _txtUsername.Text;
     public string Password => _txtPassword.Text;
     public string ConfirmPassword => _txtConfirmPassword.Text;
-    public bool RegisterAsAdmin => _chkAdmin.Checked;
 
     public void ShowMessage(string message, string title = "Music App")
     {

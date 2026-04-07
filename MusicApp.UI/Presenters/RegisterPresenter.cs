@@ -18,8 +18,7 @@ public class RegisterPresenter
         var result = await _authService.RegisterAsync(
             _view.Username,
             _view.Password,
-            _view.ConfirmPassword,
-            _view.RegisterAsAdmin);
+            _view.ConfirmPassword);
 
         _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
 
