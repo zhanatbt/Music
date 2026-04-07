@@ -1,0 +1,14 @@
+namespace MusicApp.Application.DTOs;
+
+public class TrackCreateDto
+{
+    public string Title { get; set; } = string.Empty;
+    public string ArtistName { get; set; } = string.Empty;
+    public string? AlbumTitle { get; set; }
+    public int GenreId { get; set; }
+    public int? CategoryId { get; set; }
+    public int DurationSeconds { get; set; }
+    public string? DeezerId { get; set; }
+    public string? PreviewUrl { get; set; }
+    public string SourceType { get; set; } = "Manual";
+}

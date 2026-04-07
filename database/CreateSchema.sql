@@ -1,0 +1,65 @@
+CREATE TABLE Users (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    Username NVARCHAR(100) NOT NULL UNIQUE,
+    PasswordHash NVARCHAR(255) NOT NULL,
+    Role INT NOT NULL,
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+);
+
+CREATE TABLE Genres (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    Name NVARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE Categories (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    Name NVARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE Artists (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    Name NVARCHAR(150) NOT NULL UNIQUE
+);
+
+CREATE TABLE Albums (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    Title NVARCHAR(150) NOT NULL,
+    ReleaseDateUtc DATETIME2 NULL,
+    ArtistId INT NOT NULL,
+    CONSTRAINT FK_Albums_Artists FOREIGN KEY (ArtistId) REFERENCES Artists(Id),
+    CONSTRAINT UQ_Albums_Title_Artist UNIQUE (Title, ArtistId)
+);
+
+CREATE TABLE Tracks (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    Title NVARCHAR(150) NOT NULL,
+    ArtistId INT NOT NULL,
+    AlbumId INT NULL,
+    GenreId INT NOT NULL,
+    CategoryId INT NULL,
+    DurationSeconds INT NOT NULL DEFAULT 0,
+    DeezerId NVARCHAR(50) NULL,
+    PreviewUrl NVARCHAR(500) NULL,
+    SourceType NVARCHAR(50) NOT NULL DEFAULT 'Manual',
+    CONSTRAINT FK_Tracks_Artists FOREIGN KEY (ArtistId) REFERENCES Artists(Id),
+    CONSTRAINT FK_Tracks_Albums FOREIGN KEY (AlbumId) REFERENCES Albums(Id),
+    CONSTRAINT FK_Tracks_Genres FOREIGN KEY (GenreId) REFERENCES Genres(Id),
+    CONSTRAINT FK_Tracks_Categories FOREIGN KEY (CategoryId) REFERENCES Categories(Id)
+);
+
+CREATE TABLE Playlists (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    Name NVARCHAR(120) NOT NULL,
+    UserId INT NOT NULL,
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT FK_Playlists_Users FOREIGN KEY (UserId) REFERENCES Users(Id)
+);
+
+CREATE TABLE PlaylistTracks (
+    PlaylistId INT NOT NULL,
+    TrackId INT NOT NULL,
+    AddedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT PK_PlaylistTracks PRIMARY KEY (PlaylistId, TrackId),
+    CONSTRAINT FK_PlaylistTracks_Playlists FOREIGN KEY (PlaylistId) REFERENCES Playlists(Id),
+    CONSTRAINT FK_PlaylistTracks_Tracks FOREIGN KEY (TrackId) REFERENCES Tracks(Id)
+);
