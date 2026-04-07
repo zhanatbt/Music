@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using MusicApp.Domain.Common;
 using MusicApp.Domain.Entities;
 using MusicApp.Infrastructure.Configuration;
@@ -12,7 +13,7 @@ public static class DatabaseInitializer
         SeedDataConfiguration? seedData = null,
         CancellationToken cancellationToken = default)
     {
-        await context.Database.EnsureCreatedAsync(cancellationToken);
+        await context.Database.MigrateAsync(cancellationToken);
         seedData ??= new SeedDataConfiguration();
 
         if (!context.Users.Any())

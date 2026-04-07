@@ -19,7 +19,8 @@ internal static class Program
 
         var configuration = BuildConfiguration();
         var appConfiguration = configuration.Get<AppConfiguration>() ?? new AppConfiguration();
-        var connectionString = appConfiguration.ConnectionStrings.DefaultConnection;
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? appConfiguration.ConnectionStrings.DefaultConnection;
 
         using var context = AppDbContextFactory.Create(connectionString);
         DatabaseInitializer.SeedAsync(context, appConfiguration.SeedData).GetAwaiter().GetResult();
