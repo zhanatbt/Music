@@ -72,4 +72,18 @@ public class PlaylistRepository : IPlaylistRepository
             await _context.SaveChangesAsync(cancellationToken);
         }
     }
+
+    public async Task RemoveTrackAsync(int playlistId, int trackId, CancellationToken cancellationToken = default)
+    {
+        var playlistTrack = await _context.PlaylistTracks
+            .FirstOrDefaultAsync(x => x.PlaylistId == playlistId && x.TrackId == trackId, cancellationToken);
+
+        if (playlistTrack is null)
+        {
+            return;
+        }
+
+        _context.PlaylistTracks.Remove(playlistTrack);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
 }

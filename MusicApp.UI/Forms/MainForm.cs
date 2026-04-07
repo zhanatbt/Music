@@ -151,12 +151,22 @@ public class MainForm : Form, IMainView
     {
         var panel = new Panel { Dock = DockStyle.Fill };
 
+        var topPanel = new Panel { Dock = DockStyle.Top, Height = 56 };
         var titleLabel = new Label
         {
             Text = "Треки выбранного плейлиста",
             Dock = DockStyle.Top,
             Height = 24
         };
+        var btnRemoveTrack = new Button
+        {
+            Text = "Удалить из плейлиста",
+            Dock = DockStyle.Bottom,
+            Height = 28
+        };
+        btnRemoveTrack.Click += async (_, _) => await _presenter.RemoveSelectedTrackFromPlaylistAsync();
+        topPanel.Controls.Add(btnRemoveTrack);
+        topPanel.Controls.Add(titleLabel);
 
         _gridPlaylistTracks = new DataGridView
         {
@@ -170,7 +180,7 @@ public class MainForm : Form, IMainView
         };
 
         panel.Controls.Add(_gridPlaylistTracks);
-        panel.Controls.Add(titleLabel);
+        panel.Controls.Add(topPanel);
         return panel;
     }
 
@@ -179,6 +189,8 @@ public class MainForm : Form, IMainView
     public int? SelectedTrackId => _gridTracks.CurrentRow?.DataBoundItem is TrackDto track ? track.Id : null;
 
     public int? SelectedPlaylistId => _gridPlaylists.CurrentRow?.DataBoundItem is PlaylistDto playlist ? playlist.Id : null;
+
+    public int? SelectedPlaylistTrackId => _gridPlaylistTracks.CurrentRow?.DataBoundItem is TrackDto track ? track.Id : null;
 
     public string NewPlaylistName => _txtNewPlaylist.Text;
 

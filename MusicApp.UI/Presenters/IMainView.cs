@@ -7,6 +7,7 @@ public interface IMainView
     string SearchText { get; }
     int? SelectedTrackId { get; }
     int? SelectedPlaylistId { get; }
+    int? SelectedPlaylistTrackId { get; }
     string NewPlaylistName { get; }
     void SetTracks(IReadOnlyList<TrackDto> tracks);
     void SetPlaylists(IReadOnlyList<PlaylistDto> playlists);

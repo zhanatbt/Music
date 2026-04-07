@@ -82,4 +82,22 @@ public class MusicLibraryService
         await _playlistRepository.AddTrackAsync(playlistId, trackId, cancellationToken);
         return OperationResult.Ok("Трек добавлен в плейлист.");
     }
+
+    public async Task<OperationResult> RemoveTrackFromPlaylistAsync(int playlistId, int trackId, CancellationToken cancellationToken = default)
+    {
+        var playlist = await _playlistRepository.GetByIdAsync(playlistId, cancellationToken);
+        if (playlist is null)
+        {
+            return OperationResult.Fail("Плейлист не найден.");
+        }
+
+        var trackExistsInPlaylist = playlist.PlaylistTracks.Any(x => x.TrackId == trackId);
+        if (!trackExistsInPlaylist)
+        {
+            return OperationResult.Fail("Выбранный трек не найден в плейлисте.");
+        }
+
+        await _playlistRepository.RemoveTrackAsync(playlistId, trackId, cancellationToken);
+        return OperationResult.Ok("Трек удалён из плейлиста.");
+    }
 }

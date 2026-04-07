@@ -23,11 +23,16 @@ internal static class Program
             ?? appConfiguration.ConnectionStrings.DefaultConnection;
 
         using var context = AppDbContextFactory.Create(connectionString);
-        DatabaseInitializer.SeedAsync(context, appConfiguration.SeedData).GetAwaiter().GetResult();
-
-        var userRepository = new UserRepository(context);
         var genreRepository = new GenreRepository(context);
         var categoryRepository = new CategoryRepository(context);
+        var userRepository = new UserRepository(context);
+        DatabaseInitializer.SeedAsync(
+            context,
+            userRepository,
+            genreRepository,
+            categoryRepository,
+            appConfiguration.SeedData).GetAwaiter().GetResult();
+
         var artistRepository = new ArtistRepository(context);
         var albumRepository = new AlbumRepository(context);
         var trackRepository = new TrackRepository(context);

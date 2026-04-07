@@ -76,6 +76,30 @@ public class MainPresenter
         });
     }
 
+    public async Task RemoveSelectedTrackFromPlaylistAsync()
+    {
+        await ExecuteSerializedAsync(async () =>
+        {
+            if (!_view.SelectedPlaylistId.HasValue || !_view.SelectedPlaylistTrackId.HasValue)
+            {
+                _view.ShowMessage("Сначала выберите плейлист и трек в нижней таблице.", "Ошибка");
+                return;
+            }
+
+            var result = await _musicLibraryService.RemoveTrackFromPlaylistAsync(
+                _view.SelectedPlaylistId.Value,
+                _view.SelectedPlaylistTrackId.Value);
+
+            _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
+
+            if (result.Success)
+            {
+                await ReloadPlaylistsAsync();
+                await ReloadSelectedPlaylistTracksAsync();
+            }
+        });
+    }
+
     public async Task PlayPreviewAsync()
     {
         await ExecuteSerializedAsync(async () =>
