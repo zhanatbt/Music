@@ -15,6 +15,7 @@ public class AdminCatalogService
     private readonly IAlbumRepository _albumRepository;
     private readonly IUserRepository _userRepository;
     private readonly IMusicImportClient _musicImportClient;
+    private readonly IAudioMetadataReader _audioMetadataReader;
 
     public AdminCatalogService(
         IGenreRepository genreRepository,
@@ -23,7 +24,8 @@ public class AdminCatalogService
         IArtistRepository artistRepository,
         IAlbumRepository albumRepository,
         IUserRepository userRepository,
-        IMusicImportClient musicImportClient)
+        IMusicImportClient musicImportClient,
+        IAudioMetadataReader audioMetadataReader)
     {
         _genreRepository = genreRepository;
         _categoryRepository = categoryRepository;
@@ -32,6 +34,7 @@ public class AdminCatalogService
         _albumRepository = albumRepository;
         _userRepository = userRepository;
         _musicImportClient = musicImportClient;
+        _audioMetadataReader = audioMetadataReader;
     }
 
     public async Task<IReadOnlyList<GenreDto>> GetGenresAsync(CancellationToken cancellationToken = default)
@@ -94,6 +97,11 @@ public class AdminCatalogService
         return OperationResult.Ok("Категория добавлена.");
     }
 
+    public async Task<AudioMetadataDto> ReadAudioMetadataAsync(string filePath, CancellationToken cancellationToken = default)
+    {
+        return await _audioMetadataReader.ReadAsync(filePath, cancellationToken);
+    }
+
     public async Task<OperationResult> AddTrackAsync(TrackCreateDto request, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.ArtistName))
@@ -101,10 +109,10 @@ public class AdminCatalogService
             return OperationResult.Fail("Для трека нужны название и исполнитель.");
         }
 
-        var genre = await _genreRepository.GetByIdAsync(request.GenreId, cancellationToken);
+        var genre = await ResolveGenreAsync(request, cancellationToken);
         if (genre is null)
         {
-            return OperationResult.Fail("Выберите жанр.");
+            return OperationResult.Fail("Выберите жанр или импортируйте тег жанра из mp3.");
         }
 
         Category? category = null;
@@ -147,6 +155,10 @@ public class AdminCatalogService
             return OperationResult.Fail("Такой трек уже есть в каталоге.");
         }
 
+        var playbackSource = !string.IsNullOrWhiteSpace(request.AudioFilePath)
+            ? request.AudioFilePath
+            : request.PreviewUrl;
+
         var track = new Track
         {
             Title = request.Title.Trim(),
@@ -156,7 +168,7 @@ public class AdminCatalogService
             CategoryId = category?.Id,
             DurationSeconds = request.DurationSeconds,
             DeezerId = request.DeezerId,
-            PreviewUrl = request.PreviewUrl,
+            PreviewUrl = playbackSource,
             SourceType = request.SourceType
         };
 
@@ -167,5 +179,33 @@ public class AdminCatalogService
     public Task<IReadOnlyList<DeezerTrackDto>> SearchDeezerAsync(string query, CancellationToken cancellationToken = default)
     {
         return _musicImportClient.SearchAsync(query, cancellationToken);
+    }
+
+    private async Task<Genre?> ResolveGenreAsync(TrackCreateDto request, CancellationToken cancellationToken)
+    {
+        if (request.GenreId > 0)
+        {
+            var selectedGenre = await _genreRepository.GetByIdAsync(request.GenreId, cancellationToken);
+            if (selectedGenre is not null)
+            {
+                return selectedGenre;
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(request.GenreName))
+        {
+            return null;
+        }
+
+        var normalized = request.GenreName.Trim();
+        var existing = await _genreRepository.GetByNameAsync(normalized, cancellationToken);
+        if (existing is not null)
+        {
+            return existing;
+        }
+
+        var genre = new Genre { Name = normalized };
+        await _genreRepository.AddAsync(genre, cancellationToken);
+        return genre;
     }
 }

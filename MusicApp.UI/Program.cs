@@ -45,7 +45,8 @@ internal static class Program
             artistRepository,
             albumRepository,
             userRepository,
-            new DeezerClient(httpClient));
+            new DeezerClient(httpClient),
+            new TagLibAudioMetadataReader());
         var musicLibraryService = new MusicLibraryService(trackRepository, playlistRepository);
 
         System.Windows.Forms.Application.Run(new LoginForm(authService, adminCatalogService, musicLibraryService));

@@ -1,6 +1,5 @@
 using MusicApp.Application.DTOs;
 using MusicApp.Application.Services;
-using MusicApp.Domain.Common;
 using MusicApp.Domain.Entities;
 using MusicApp.Tests.Fakes;
 
@@ -18,6 +17,7 @@ public class AdminCatalogServiceTests
         var albumRepository = new FakeAlbumRepository();
         var userRepository = new FakeUserRepository();
         var importClient = new FakeMusicImportClient();
+        var audioMetadataReader = new FakeAudioMetadataReader();
 
         await genreRepository.AddAsync(new Genre { Id = 1, Name = "Pop" });
         await artistRepository.AddAsync(new Artist { Id = 1, Name = "Artist" });
@@ -37,7 +37,8 @@ public class AdminCatalogServiceTests
             artistRepository,
             albumRepository,
             userRepository,
-            importClient);
+            importClient,
+            audioMetadataReader);
 
         var result = await service.AddTrackAsync(new TrackCreateDto
         {

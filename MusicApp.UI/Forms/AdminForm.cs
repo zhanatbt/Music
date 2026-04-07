@@ -19,6 +19,7 @@ public class AdminForm : Form, IAdminView
     private TextBox _txtTrackTitle = null!;
     private TextBox _txtArtist = null!;
     private TextBox _txtAlbum = null!;
+    private TextBox _txtAudioFilePath = null!;
     private NumericUpDown _numDuration = null!;
     private ComboBox _cmbGenre = null!;
     private ComboBox _cmbCategory = null!;
@@ -27,6 +28,7 @@ public class AdminForm : Form, IAdminView
     private DataGridView _gridTracks = null!;
     private Label _lblNowPlaying = null!;
     private AxWindowsMediaPlayer _player = null!;
+    private string? _importedGenreName;
 
     public AdminForm(AdminCatalogService catalogService, UserSessionDto session)
     {
@@ -46,8 +48,7 @@ public class AdminForm : Form, IAdminView
         tracksTab.Controls.Add(BuildTracksLayout());
 
         var usersTab = new TabPage("Пользователи");
-        var usersGrid = CreateGrid(_usersSource);
-        usersTab.Controls.Add(usersGrid);
+        usersTab.Controls.Add(CreateGrid(_usersSource));
 
         var deezerTab = new TabPage("Импорт Deezer");
         deezerTab.Controls.Add(BuildDeezerLayout());
@@ -72,8 +73,50 @@ public class AdminForm : Form, IAdminView
     public int? SelectedGenreId => (_cmbGenre.SelectedItem as GenreDto)?.Id;
     public int? SelectedCategoryId => (_cmbCategory.SelectedItem as CategoryDto)?.Id;
     public string DeezerQuery => _txtDeezerQuery.Text;
+    public string? ImportedAudioFilePath => string.IsNullOrWhiteSpace(_txtAudioFilePath.Text) ? null : _txtAudioFilePath.Text;
+    public string? ImportedGenreName => _importedGenreName;
     public TrackDto? SelectedTrack => _gridTracks.CurrentRow?.DataBoundItem as TrackDto;
     public DeezerTrackDto? SelectedDeezerTrack => _gridDeezer.CurrentRow?.DataBoundItem as DeezerTrackDto;
+
+    public string? PickAudioFile()
+    {
+        using var dialog = new OpenFileDialog
+        {
+            Filter = "MP3 files (*.mp3)|*.mp3|Audio files (*.mp3;*.wav;*.flac)|*.mp3;*.wav;*.flac|All files (*.*)|*.*",
+            Title = "Выберите аудиофайл"
+        };
+
+        return dialog.ShowDialog(this) == DialogResult.OK ? dialog.FileName : null;
+    }
+
+    public void ApplyAudioMetadata(AudioMetadataDto metadata)
+    {
+        _txtAudioFilePath.Text = metadata.FilePath;
+        _txtTrackTitle.Text = metadata.Title;
+        _txtArtist.Text = metadata.ArtistName;
+        _txtAlbum.Text = metadata.AlbumTitle;
+        _numDuration.Value = Math.Min(_numDuration.Maximum, Math.Max(_numDuration.Minimum, metadata.DurationSeconds));
+        _importedGenreName = metadata.GenreName;
+    }
+
+    public void TrySelectGenreByName(string? genreName)
+    {
+        _importedGenreName = genreName;
+        if (string.IsNullOrWhiteSpace(genreName))
+        {
+            return;
+        }
+
+        for (var i = 0; i < _cmbGenre.Items.Count; i++)
+        {
+            if (_cmbGenre.Items[i] is GenreDto genre &&
+                string.Equals(genre.Name, genreName, StringComparison.OrdinalIgnoreCase))
+            {
+                _cmbGenre.SelectedIndex = i;
+                return;
+            }
+        }
+    }
 
     public void SetGenres(IReadOnlyList<GenreDto> genres)
     {
@@ -130,19 +173,21 @@ public class AdminForm : Form, IAdminView
         _txtTrackTitle.Clear();
         _txtArtist.Clear();
         _txtAlbum.Clear();
+        _txtAudioFilePath.Clear();
         _numDuration.Value = 180;
+        _importedGenreName = null;
     }
 
     private Control BuildManageLayout()
     {
-        var root = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, SplitterDistance = 260 };
+        var root = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, SplitterDistance = 320 };
 
         var top = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(12),
             ColumnCount = 4,
-            RowCount = 6
+            RowCount = 8
         };
 
         top.Controls.Add(new Label { Text = "Новый жанр" }, 0, 0);
@@ -157,32 +202,44 @@ public class AdminForm : Form, IAdminView
         var btnAddCategory = new Button { Text = "Добавить категорию" };
         top.Controls.Add(btnAddCategory, 2, 1);
 
-        top.Controls.Add(new Label { Text = "Трек" }, 0, 2);
+        top.Controls.Add(new Label { Text = "Аудиофайл" }, 0, 2);
+        _txtAudioFilePath = new TextBox { ReadOnly = true };
+        top.Controls.Add(_txtAudioFilePath, 1, 2);
+        var btnPickAudio = new Button { Text = "Выбрать mp3" };
+        top.Controls.Add(btnPickAudio, 2, 2);
+
+        top.Controls.Add(new Label { Text = "Трек" }, 0, 3);
         _txtTrackTitle = new TextBox();
-        top.Controls.Add(_txtTrackTitle, 1, 2);
+        top.Controls.Add(_txtTrackTitle, 1, 3);
 
-        top.Controls.Add(new Label { Text = "Исполнитель" }, 0, 3);
+        top.Controls.Add(new Label { Text = "Исполнитель" }, 0, 4);
         _txtArtist = new TextBox();
-        top.Controls.Add(_txtArtist, 1, 3);
+        top.Controls.Add(_txtArtist, 1, 4);
 
-        top.Controls.Add(new Label { Text = "Альбом" }, 2, 2);
+        top.Controls.Add(new Label { Text = "Альбом" }, 2, 3);
         _txtAlbum = new TextBox();
-        top.Controls.Add(_txtAlbum, 3, 2);
+        top.Controls.Add(_txtAlbum, 3, 3);
 
-        top.Controls.Add(new Label { Text = "Длительность, сек" }, 2, 3);
+        top.Controls.Add(new Label { Text = "Длительность, сек" }, 2, 4);
         _numDuration = new NumericUpDown { Maximum = 10000, Minimum = 0, Value = 180 };
-        top.Controls.Add(_numDuration, 3, 3);
+        top.Controls.Add(_numDuration, 3, 4);
 
-        top.Controls.Add(new Label { Text = "Жанр" }, 0, 4);
+        top.Controls.Add(new Label { Text = "Жанр" }, 0, 5);
         _cmbGenre = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
-        top.Controls.Add(_cmbGenre, 1, 4);
+        top.Controls.Add(_cmbGenre, 1, 5);
 
-        top.Controls.Add(new Label { Text = "Категория" }, 2, 4);
+        top.Controls.Add(new Label { Text = "Категория" }, 2, 5);
         _cmbCategory = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
-        top.Controls.Add(_cmbCategory, 3, 4);
+        top.Controls.Add(_cmbCategory, 3, 5);
 
-        var btnAddTrack = new Button { Text = "Добавить трек вручную" };
-        top.Controls.Add(btnAddTrack, 1, 5);
+        top.Controls.Add(new Label
+        {
+            Text = "Если у mp3 есть теги, поля заполнятся автоматически. Жанр будет выбран или создан при сохранении.",
+            AutoSize = true
+        }, 0, 6);
+
+        var btnAddTrack = new Button { Text = "Сохранить трек" };
+        top.Controls.Add(btnAddTrack, 1, 7);
 
         var lowerGrid = CreateGrid(_tracksSource);
 
@@ -191,6 +248,7 @@ public class AdminForm : Form, IAdminView
 
         btnAddGenre.Click += async (_, _) => await _presenter.AddGenreAsync();
         btnAddCategory.Click += async (_, _) => await _presenter.AddCategoryAsync();
+        btnPickAudio.Click += async (_, _) => await _presenter.ImportAudioFileAsync();
         btnAddTrack.Click += async (_, _) => await _presenter.AddManualTrackAsync();
 
         return root;

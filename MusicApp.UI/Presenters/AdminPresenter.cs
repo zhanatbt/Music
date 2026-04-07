@@ -39,23 +39,32 @@ public class AdminPresenter
         }
     }
 
-    public async Task AddManualTrackAsync()
+    public async Task ImportAudioFileAsync()
     {
-        if (!_view.SelectedGenreId.HasValue)
+        var filePath = _view.PickAudioFile();
+        if (string.IsNullOrWhiteSpace(filePath))
         {
-            _view.ShowMessage("Выберите жанр для трека.", "Ошибка");
             return;
         }
 
+        var metadata = await _catalogService.ReadAudioMetadataAsync(filePath);
+        _view.ApplyAudioMetadata(metadata);
+        _view.TrySelectGenreByName(metadata.GenreName);
+    }
+
+    public async Task AddManualTrackAsync()
+    {
         var request = new TrackCreateDto
         {
             Title = _view.TrackTitle,
             ArtistName = _view.ArtistName,
             AlbumTitle = _view.AlbumTitle,
             DurationSeconds = _view.DurationSeconds,
-            GenreId = _view.SelectedGenreId.Value,
+            GenreId = _view.SelectedGenreId ?? 0,
+            GenreName = _view.ImportedGenreName,
             CategoryId = _view.SelectedCategoryId,
-            SourceType = "Manual"
+            AudioFilePath = _view.ImportedAudioFilePath,
+            SourceType = !string.IsNullOrWhiteSpace(_view.ImportedAudioFilePath) ? "LocalFile" : "Manual"
         };
 
         var result = await _catalogService.AddTrackAsync(request);
@@ -118,7 +127,7 @@ public class AdminPresenter
 
         if (string.IsNullOrWhiteSpace(_view.SelectedTrack.PreviewUrl))
         {
-            _view.ShowMessage("У выбранного трека нет preview-ссылки.", "Информация");
+            _view.ShowMessage("У выбранного трека нет ссылки или файла для воспроизведения.", "Информация");
             return Task.CompletedTask;
         }
 

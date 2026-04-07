@@ -13,8 +13,13 @@ public interface IAdminView
     int? SelectedGenreId { get; }
     int? SelectedCategoryId { get; }
     string DeezerQuery { get; }
+    string? ImportedAudioFilePath { get; }
+    string? ImportedGenreName { get; }
     TrackDto? SelectedTrack { get; }
     DeezerTrackDto? SelectedDeezerTrack { get; }
+    string? PickAudioFile();
+    void ApplyAudioMetadata(AudioMetadataDto metadata);
+    void TrySelectGenreByName(string? genreName);
     void SetGenres(IReadOnlyList<GenreDto> genres);
     void SetCategories(IReadOnlyList<CategoryDto> categories);
     void SetTracks(IReadOnlyList<TrackDto> tracks);
