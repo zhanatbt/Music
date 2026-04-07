@@ -29,21 +29,34 @@ public class MusicLibraryService
         return playlists.Select(LookupMapper.ToDto).ToList();
     }
 
-    public async Task<OperationResult> CreatePlaylistAsync(int userId, string playlistName, CancellationToken cancellationToken = default)
+    public async Task<OperationResult<PlaylistDto>> CreatePlaylistAsync(int userId, string playlistName, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(playlistName))
         {
-            return OperationResult.Fail("Введите название плейлиста.");
+            return OperationResult<PlaylistDto>.Fail("Введите название плейлиста.");
+        }
+
+        var normalizedName = playlistName.Trim();
+        var existing = await _playlistRepository.GetByUserIdAndNameAsync(userId, normalizedName, cancellationToken);
+        if (existing is not null)
+        {
+            return OperationResult<PlaylistDto>.Fail("Плейлист с таким названием уже существует.");
         }
 
         var playlist = new Playlist
         {
-            Name = playlistName.Trim(),
+            Name = normalizedName,
             UserId = userId
         };
 
         await _playlistRepository.AddAsync(playlist, cancellationToken);
-        return OperationResult.Ok("Плейлист создан.");
+
+        return OperationResult<PlaylistDto>.Ok(new PlaylistDto
+        {
+            Id = playlist.Id,
+            Name = playlist.Name,
+            TrackCount = 0
+        }, "Плейлист создан.");
     }
 
     public async Task<OperationResult> AddTrackToPlaylistAsync(int playlistId, int trackId, CancellationToken cancellationToken = default)

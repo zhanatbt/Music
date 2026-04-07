@@ -30,6 +30,13 @@ public class PlaylistRepository : IPlaylistRepository
             .FirstOrDefaultAsync(x => x.Id == playlistId, cancellationToken);
     }
 
+    public async Task<Playlist?> GetByUserIdAndNameAsync(int userId, string name, CancellationToken cancellationToken = default)
+    {
+        return await _context.Playlists
+            .Include(x => x.PlaylistTracks)
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.Name == name, cancellationToken);
+    }
+
     public async Task AddAsync(Playlist playlist, CancellationToken cancellationToken = default)
     {
         _context.Playlists.Add(playlist);

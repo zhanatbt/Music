@@ -6,6 +6,7 @@ public interface IPlaylistRepository
 {
     Task<IReadOnlyList<Playlist>> GetByUserIdAsync(int userId, CancellationToken cancellationToken = default);
     Task<Playlist?> GetByIdAsync(int playlistId, CancellationToken cancellationToken = default);
+    Task<Playlist?> GetByUserIdAndNameAsync(int userId, string name, CancellationToken cancellationToken = default);
     Task AddAsync(Playlist playlist, CancellationToken cancellationToken = default);
     Task AddTrackAsync(int playlistId, int trackId, CancellationToken cancellationToken = default);
 }

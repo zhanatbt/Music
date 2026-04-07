@@ -14,7 +14,7 @@ public class MainForm : Form, IMainView
     private readonly TextBox _txtSearch;
     private readonly TextBox _txtNewPlaylist;
     private readonly DataGridView _gridTracks;
-    private readonly ListBox _lstPlaylists;
+    private readonly DataGridView _gridPlaylists;
     private readonly Label _lblNowPlaying;
     private readonly AxWindowsMediaPlayer _player;
 
@@ -23,21 +23,52 @@ public class MainForm : Form, IMainView
         _presenter = new MainPresenter(this, musicLibraryService, session);
 
         Text = $"Music App - Пользователь {session.Username}";
-        Width = 1080;
-        Height = 640;
+        Width = 1180;
+        Height = 700;
         StartPosition = FormStartPosition.CenterParent;
 
         var header = new Panel { Dock = DockStyle.Top, Height = 56, Padding = new Padding(12) };
         _txtSearch = new TextBox { Left = 12, Top = 14, Width = 420 };
         var btnSearch = new Button { Text = "Поиск", Left = 440, Top = 12, Width = 110 };
         var btnPlay = new Button { Text = "Слушать preview", Left = 560, Top = 12, Width = 140 };
-        var btnAddToPlaylist = new Button { Text = "В плейлист", Left = 710, Top = 12, Width = 120 };
+        var btnAddToPlaylist = new Button { Text = "Добавить в выбранный плейлист", Left = 710, Top = 12, Width = 220 };
         header.Controls.AddRange([_txtSearch, btnSearch, btnPlay, btnAddToPlaylist]);
 
-        var leftPanel = new Panel { Dock = DockStyle.Left, Width = 250, Padding = new Padding(12) };
+        var leftPanel = new Panel { Dock = DockStyle.Left, Width = 320, Padding = new Padding(12) };
         leftPanel.Controls.Add(new Label { Text = "Плейлисты", Dock = DockStyle.Top, Height = 24 });
-        _lstPlaylists = new ListBox { Dock = DockStyle.Fill, DisplayMember = "Name", ValueMember = "Id" };
-        leftPanel.Controls.Add(_lstPlaylists);
+        leftPanel.Controls.Add(new Label
+        {
+            Text = "Выбери плейлист в таблице ниже, потом выдели трек справа и нажми кнопку сверху.",
+            Dock = DockStyle.Top,
+            Height = 52
+        });
+
+        _gridPlaylists = new DataGridView
+        {
+            Dock = DockStyle.Fill,
+            ReadOnly = true,
+            AutoGenerateColumns = false,
+            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+            MultiSelect = false,
+            AllowUserToAddRows = false,
+            AllowUserToDeleteRows = false,
+            AllowUserToResizeRows = false,
+            RowHeadersVisible = false
+        };
+        _gridPlaylists.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            DataPropertyName = nameof(PlaylistDto.Name),
+            HeaderText = "Плейлист",
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
+        });
+        _gridPlaylists.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            DataPropertyName = nameof(PlaylistDto.TrackCount),
+            HeaderText = "Треков",
+            Width = 70
+        });
+        _gridPlaylists.DataSource = _playlistsSource;
+        leftPanel.Controls.Add(_gridPlaylists);
 
         var playlistBottom = new Panel { Dock = DockStyle.Bottom, Height = 72 };
         _txtNewPlaylist = new TextBox { Dock = DockStyle.Top };
@@ -105,7 +136,7 @@ public class MainForm : Form, IMainView
     {
         get
         {
-            if (_lstPlaylists.SelectedItem is PlaylistDto playlist)
+            if (_gridPlaylists.CurrentRow?.DataBoundItem is PlaylistDto playlist)
             {
                 return playlist.Id;
             }
@@ -118,13 +149,48 @@ public class MainForm : Form, IMainView
 
     public void SetTracks(IReadOnlyList<TrackDto> tracks)
     {
-        _tracksSource.DataSource = tracks;
+        _tracksSource.DataSource = tracks.ToList();
     }
 
     public void SetPlaylists(IReadOnlyList<PlaylistDto> playlists)
     {
+        _playlistsSource.DataSource = playlists.ToList();
+    }
+
+    public void AddPlaylist(PlaylistDto playlist)
+    {
+        var playlists = (_playlistsSource.DataSource as List<PlaylistDto>) ?? [];
+        playlists.Add(playlist);
+        _playlistsSource.DataSource = null;
         _playlistsSource.DataSource = playlists;
-        _lstPlaylists.DataSource = _playlistsSource;
+    }
+
+    public void SelectPlaylistByName(string playlistName)
+    {
+        if (string.IsNullOrWhiteSpace(playlistName))
+        {
+            return;
+        }
+
+        for (var i = 0; i < _gridPlaylists.Rows.Count; i++)
+        {
+            if (_gridPlaylists.Rows[i].DataBoundItem is PlaylistDto playlist &&
+                string.Equals(playlist.Name, playlistName, StringComparison.OrdinalIgnoreCase))
+            {
+                _gridPlaylists.ClearSelection();
+                _gridPlaylists.Rows[i].Selected = true;
+                if (_gridPlaylists.Rows[i].Cells.Count > 0)
+                {
+                    _gridPlaylists.CurrentCell = _gridPlaylists.Rows[i].Cells[0];
+                }
+                return;
+            }
+        }
+    }
+
+    public void ClearNewPlaylistName()
+    {
+        _txtNewPlaylist.Clear();
     }
 
     public void PlayPreview(string previewUrl, string trackTitle)

@@ -29,12 +29,15 @@ public class MainPresenter
 
     public async Task CreatePlaylistAsync()
     {
-        var result = await _musicLibraryService.CreatePlaylistAsync(_session.UserId, _view.NewPlaylistName);
+        var playlistName = _view.NewPlaylistName;
+        var result = await _musicLibraryService.CreatePlaylistAsync(_session.UserId, playlistName);
         _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
 
-        if (result.Success)
+        if (result.Success && result.Data is not null)
         {
-            await ReloadPlaylistsAsync();
+            _view.AddPlaylist(result.Data);
+            _view.SelectPlaylistByName(playlistName.Trim());
+            _view.ClearNewPlaylistName();
         }
     }
 
@@ -42,7 +45,7 @@ public class MainPresenter
     {
         if (!_view.SelectedTrackId.HasValue || !_view.SelectedPlaylistId.HasValue)
         {
-            _view.ShowMessage("Выберите трек и плейлист.", "Ошибка");
+            _view.ShowMessage("Сначала выберите трек в таблице и плейлист слева.", "Ошибка");
             return;
         }
 
