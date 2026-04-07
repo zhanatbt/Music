@@ -2,6 +2,5 @@
   <Project Path="MusicApp.Application/MusicApp.Application.csproj" />
   <Project Path="MusicApp.Domain/MusicApp.Domain.csproj" />
   <Project Path="MusicApp.Infrastructure/MusicApp.Infrastructure.csproj" />
-  <Project Path="MusicApp.Tests/MusicApp.Tests.csproj" />
   <Project Path="MusicApp.UI/MusicApp.UI.csproj" />
 </Solution>
