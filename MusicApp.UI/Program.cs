@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using MusicApp.Application.Services;
+using MusicApp.Application.Security;
 using MusicApp.Infrastructure.Configuration;
 using MusicApp.Infrastructure.Data;
 using MusicApp.Infrastructure.External;
@@ -32,12 +33,13 @@ internal static class Program
         var playlistRepository = new PlaylistRepository(context);
 
         var passwordHasher = new BCryptPasswordHasher();
+        var passwordValidator = new PasswordValidator();
         var httpClient = new HttpClient
         {
             BaseAddress = new Uri("https://api.deezer.com/")
         };
 
-        var authService = new AuthService(userRepository, passwordHasher);
+        var authService = new AuthService(userRepository, passwordHasher, passwordValidator);
         var adminCatalogService = new AdminCatalogService(
             genreRepository,
             categoryRepository,

@@ -10,11 +10,13 @@ public class AuthService
 {
     private readonly IUserRepository _userRepository;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly IPasswordValidator _passwordValidator;
 
-    public AuthService(IUserRepository userRepository, IPasswordHasher passwordHasher)
+    public AuthService(IUserRepository userRepository, IPasswordHasher passwordHasher, IPasswordValidator passwordValidator)
     {
         _userRepository = userRepository;
         _passwordHasher = passwordHasher;
+        _passwordValidator = passwordValidator;
     }
 
     public async Task<OperationResult<UserSessionDto>> LoginAsync(string username, string password, CancellationToken cancellationToken = default)
@@ -45,9 +47,10 @@ public class AuthService
             return OperationResult.Fail("Имя пользователя не может быть пустым.");
         }
 
-        if (password.Length < 6)
+        var passwordValidation = _passwordValidator.Validate(password);
+        if (!passwordValidation.Success)
         {
-            return OperationResult.Fail("Пароль должен содержать минимум 6 символов.");
+            return passwordValidation;
         }
 
         if (!string.Equals(password, confirmPassword, StringComparison.Ordinal))
