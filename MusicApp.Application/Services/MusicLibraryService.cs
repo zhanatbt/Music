@@ -17,9 +17,25 @@ public class MusicLibraryService
         _playlistRepository = playlistRepository;
     }
 
-    public async Task<IReadOnlyList<TrackDto>> SearchTracksAsync(string? query, int? genreId = null, int? categoryId = null, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<TrackDto>> SearchTracksAsync(
+        string? query = null,
+        string? album = null,
+        string? genre = null,
+        string? title = null,
+        string? artist = null,
+        int? genreId = null,
+        int? categoryId = null,
+        CancellationToken cancellationToken = default)
     {
-        var tracks = await _trackRepository.SearchAsync(query, genreId, categoryId, cancellationToken);
+        var tracks = await _trackRepository.SearchAsync(
+            query,
+            genreId,
+            categoryId,
+            album,
+            genre,
+            title,
+            artist,
+            cancellationToken);
         return tracks.Select(TrackMapper.ToDto).ToList();
     }
 

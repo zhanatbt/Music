@@ -41,9 +41,9 @@ public class PlaylistRepository : IPlaylistRepository
     {
         return await _context.PlaylistTracks
             .Where(x => x.PlaylistId == playlistId)
-            .Include(x => x.Track)!.ThenInclude(x => x!.Artist)
             .Include(x => x.Track)!.ThenInclude(x => x!.Album)
-            .Include(x => x.Track)!.ThenInclude(x => x!.Genre)
+            .Include(x => x.Track)!.ThenInclude(x => x!.TrackArtists).ThenInclude(x => x.Artist)
+            .Include(x => x.Track)!.ThenInclude(x => x!.TrackGenres).ThenInclude(x => x.Genre)
             .Include(x => x.Track)!.ThenInclude(x => x!.Category)
             .OrderBy(x => x.AddedAtUtc)
             .Select(x => x.Track!)

@@ -52,31 +52,63 @@ public class TrackRepository : ITrackRepository
         }
 
         return await query.FirstOrDefaultAsync(
-            t => t.ArtistId == artistId &&
-                 t.AlbumId == albumId &&
-                 t.Title == normalizedTitle,
+            t => t.AlbumId == albumId &&
+                 t.Title == normalizedTitle &&
+                 t.TrackArtists.Any(ta => ta.ArtistId == artistId),
             cancellationToken);
     }
 
-    public async Task<IReadOnlyList<Track>> SearchAsync(string? query, int? genreId, int? categoryId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Track>> SearchAsync(
+        string? query,
+        int? genreId,
+        int? categoryId,
+        string? album,
+        string? genre,
+        string? title,
+        string? artist,
+        CancellationToken cancellationToken = default)
     {
         var normalized = query?.Trim();
+        var normalizedAlbum = album?.Trim();
+        var normalizedGenre = genre?.Trim();
+        var normalizedTitle = title?.Trim();
+        var normalizedArtist = artist?.Trim();
 
         var trackQuery = IncludeGraph(_context.Tracks).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(normalizedTitle))
+        {
+            trackQuery = trackQuery.Where(t => t.Title.Contains(normalizedTitle));
+        }
+
+        if (!string.IsNullOrWhiteSpace(normalizedAlbum))
+        {
+            trackQuery = trackQuery.Where(t => t.Album != null && t.Album.Title.Contains(normalizedAlbum));
+        }
+
+        if (!string.IsNullOrWhiteSpace(normalizedArtist))
+        {
+            trackQuery = trackQuery.Where(t => t.TrackArtists.Any(ta => ta.Artist != null && ta.Artist.Name.Contains(normalizedArtist)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(normalizedGenre))
+        {
+            trackQuery = trackQuery.Where(t => t.TrackGenres.Any(tg => tg.Genre != null && tg.Genre.Name.Contains(normalizedGenre)));
+        }
 
         if (!string.IsNullOrWhiteSpace(normalized))
         {
             trackQuery = trackQuery.Where(t =>
                 t.Title.Contains(normalized) ||
-                t.Artist!.Name.Contains(normalized) ||
+                t.TrackArtists.Any(ta => ta.Artist != null && ta.Artist.Name.Contains(normalized)) ||
                 (t.Album != null && t.Album.Title.Contains(normalized)) ||
-                t.Genre!.Name.Contains(normalized) ||
+                t.TrackGenres.Any(tg => tg.Genre != null && tg.Genre.Name.Contains(normalized)) ||
                 (t.Category != null && t.Category.Name.Contains(normalized)));
         }
 
         if (genreId.HasValue)
         {
-            trackQuery = trackQuery.Where(t => t.GenreId == genreId.Value);
+            trackQuery = trackQuery.Where(t => t.TrackGenres.Any(tg => tg.GenreId == genreId.Value));
         }
 
         if (categoryId.HasValue)
@@ -98,9 +130,11 @@ public class TrackRepository : ITrackRepository
     private static IQueryable<Track> IncludeGraph(IQueryable<Track> query)
     {
         return query
-            .Include(t => t.Artist)
             .Include(t => t.Album)
-            .Include(t => t.Genre)
+            .Include(t => t.TrackArtists)
+                .ThenInclude(x => x.Artist)
+            .Include(t => t.TrackGenres)
+                .ThenInclude(x => x.Genre)
             .Include(t => t.Category);
     }
 }

@@ -11,9 +11,15 @@ public static class TrackMapper
         {
             Id = track.Id,
             Title = track.Title,
-            Artist = track.Artist?.Name ?? string.Empty,
+            Artist = string.Join(", ", track.TrackArtists
+                .Where(x => x.Artist is not null)
+                .Select(x => x.Artist!.Name)
+                .OrderBy(x => x)),
             Album = track.Album?.Title ?? string.Empty,
-            Genre = track.Genre?.Name ?? string.Empty,
+            Genre = string.Join(", ", track.TrackGenres
+                .Where(x => x.Genre is not null)
+                .Select(x => x.Genre!.Name)
+                .OrderBy(x => x)),
             Category = track.Category?.Name ?? string.Empty,
             DurationSeconds = track.DurationSeconds,
             PreviewUrl = track.PreviewUrl,

@@ -162,14 +162,20 @@ public class AdminCatalogService
         var track = new Track
         {
             Title = request.Title.Trim(),
-            ArtistId = artist.Id,
             AlbumId = album?.Id,
-            GenreId = genre.Id,
             CategoryId = category?.Id,
             DurationSeconds = request.DurationSeconds,
             DeezerId = request.DeezerId,
             PreviewUrl = playbackSource,
-            SourceType = request.SourceType
+            SourceType = request.SourceType,
+            TrackArtists = new List<TrackArtist>
+            {
+                new() { ArtistId = artist.Id }
+            },
+            TrackGenres = new List<TrackGenre>
+            {
+                new() { GenreId = genre.Id }
+            }
         };
 
         await _trackRepository.AddAsync(track, cancellationToken);
