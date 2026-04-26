@@ -73,36 +73,40 @@ public class AppDbContext : DbContext
                 .WithMany(x => x.Tracks)
                 .HasForeignKey(x => x.CategoryId)
                 .OnDelete(DeleteBehavior.SetNull);
-        });
 
-        modelBuilder.Entity<TrackArtist>(entity =>
-        {
-            entity.HasKey(x => new { x.TrackId, x.ArtistId });
+            entity.HasMany(x => x.Artists)
+                .WithMany(x => x.Tracks)
+                .UsingEntity<TrackArtist>(
+                    j => j.HasOne(x => x.Artist)
+                        .WithMany(x => x.TrackArtists)
+                        .HasForeignKey(x => x.ArtistId)
+                        .OnDelete(DeleteBehavior.Cascade),
+                    j => j.HasOne(x => x.Track)
+                        .WithMany(x => x.TrackArtists)
+                        .HasForeignKey(x => x.TrackId)
+                        .OnDelete(DeleteBehavior.Cascade),
+                    j =>
+                    {
+                        j.HasKey(x => new { x.TrackId, x.ArtistId });
+                        j.ToTable("TrackArtists");
+                    });
 
-            entity.HasOne(x => x.Track)
-                .WithMany(x => x.TrackArtists)
-                .HasForeignKey(x => x.TrackId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(x => x.Artist)
-                .WithMany(x => x.TrackArtists)
-                .HasForeignKey(x => x.ArtistId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        modelBuilder.Entity<TrackGenre>(entity =>
-        {
-            entity.HasKey(x => new { x.TrackId, x.GenreId });
-
-            entity.HasOne(x => x.Track)
-                .WithMany(x => x.TrackGenres)
-                .HasForeignKey(x => x.TrackId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(x => x.Genre)
-                .WithMany(x => x.TrackGenres)
-                .HasForeignKey(x => x.GenreId)
-                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(x => x.Genres)
+                .WithMany(x => x.Tracks)
+                .UsingEntity<TrackGenre>(
+                    j => j.HasOne(x => x.Genre)
+                        .WithMany(x => x.TrackGenres)
+                        .HasForeignKey(x => x.GenreId)
+                        .OnDelete(DeleteBehavior.Cascade),
+                    j => j.HasOne(x => x.Track)
+                        .WithMany(x => x.TrackGenres)
+                        .HasForeignKey(x => x.TrackId)
+                        .OnDelete(DeleteBehavior.Cascade),
+                    j =>
+                    {
+                        j.HasKey(x => new { x.TrackId, x.GenreId });
+                        j.ToTable("TrackGenres");
+                    });
         });
 
         modelBuilder.Entity<Playlist>(entity =>

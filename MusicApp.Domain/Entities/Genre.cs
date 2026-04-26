@@ -6,4 +6,5 @@ public class Genre
     public string Name { get; set; } = string.Empty;
 
     public ICollection<TrackGenre> TrackGenres { get; set; } = new List<TrackGenre>();
+    public ICollection<Track> Tracks { get; set; } = new List<Track>();
 }
