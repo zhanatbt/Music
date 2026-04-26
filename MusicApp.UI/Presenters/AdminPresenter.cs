@@ -95,12 +95,6 @@ public class AdminPresenter
 
     public async Task ImportDeezerTracksAsync()
     {
-        if (!_view.SelectedGenreId.HasValue)
-        {
-            _view.ShowMessage("Для импортируемых треков выберите жанр.", "Ошибка");
-            return;
-        }
-
         var tracksToImport = _view.SelectedDeezerTracks.ToList();
         if (!tracksToImport.Any() && _view.SelectedDeezerTrack is not null)
         {
@@ -140,12 +134,16 @@ public class AdminPresenter
         {
             Title = track.Title,
             ArtistName = track.ArtistName,
+            ArtistNames = track.ArtistNames,
             AlbumTitle = track.AlbumTitle,
             DurationSeconds = track.DurationSeconds,
             DeezerId = track.DeezerId,
             PreviewUrl = track.PreviewUrl,
-            GenreId = _view.SelectedGenreId!.Value,
+            GenreId = _view.SelectedGenreId ?? 0,
+            GenreName = track.GenreName,
+            GenreNames = track.GenreNames,
             CategoryId = _view.SelectedCategoryId,
+            CategoryName = _view.CategoryName,
             SourceType = "Deezer"
         };
     }
@@ -194,3 +192,4 @@ public class AdminPresenter
         _view.SetUsers(await _catalogService.GetUsersAsync());
     }
 }
+

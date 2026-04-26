@@ -142,13 +142,25 @@ public class AdminCatalogService
 
     public async Task<OperationResult> AddTrackAsync(TrackCreateDto request, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.ArtistName))
+        if (string.IsNullOrWhiteSpace(request.Title))
         {
-            return OperationResult.Fail("Для трека нужны название и исполнитель.");
+            return OperationResult.Fail("Для трека нужно название.");
         }
 
-        var genre = await ResolveGenreAsync(request, cancellationToken);
-        if (genre is null)
+        var artistNames = GetDistinctNames(request.ArtistNames, request.ArtistName);
+        if (!artistNames.Any())
+        {
+            return OperationResult.Fail("Для трека нужен хотя бы один исполнитель.");
+        }
+
+        var artists = await ResolveArtistsAsync(artistNames, cancellationToken);
+        if (!artists.Any())
+        {
+            return OperationResult.Fail("Для трека нужен хотя бы один исполнитель.");
+        }
+
+        var genres = await ResolveGenresAsync(request, cancellationToken);
+        if (!genres.Any())
         {
             return OperationResult.Fail("Выберите жанр или импортируйте тег жанра из mp3.");
         }
@@ -159,27 +171,23 @@ public class AdminCatalogService
             return OperationResult.Fail("Выбранная категория не найдена.");
         }
 
-        var artist = await _artistRepository.GetByNameAsync(request.ArtistName.Trim(), cancellationToken);
-        if (artist is null)
-        {
-            artist = new Artist { Name = request.ArtistName.Trim() };
-            await _artistRepository.AddAsync(artist, cancellationToken);
-        }
+        var primaryArtist = artists[0];
 
         Album? album = null;
         if (!string.IsNullOrWhiteSpace(request.AlbumTitle))
         {
-            album = await _albumRepository.GetByTitleAndArtistAsync(request.AlbumTitle.Trim(), artist.Id, cancellationToken);
+            var normalizedAlbumTitle = request.AlbumTitle.Trim();
+            album = await _albumRepository.GetByTitleAndArtistAsync(normalizedAlbumTitle, primaryArtist.Id, cancellationToken);
             if (album is null)
             {
-                album = new Album { Title = request.AlbumTitle.Trim(), ArtistId = artist.Id };
+                album = new Album { Title = normalizedAlbumTitle, ArtistId = primaryArtist.Id };
                 await _albumRepository.AddAsync(album, cancellationToken);
             }
         }
 
         var duplicateTrack = await _trackRepository.FindDuplicateAsync(
             request.Title,
-            artist.Id,
+            primaryArtist.Id,
             album?.Id,
             request.DeezerId,
             cancellationToken);
@@ -209,14 +217,12 @@ public class AdminCatalogService
             DeezerId = request.DeezerId,
             PreviewUrl = playbackSource,
             SourceType = request.SourceType,
-            TrackArtists = new List<TrackArtist>
-            {
-                new() { ArtistId = artist.Id }
-            },
-            TrackGenres = new List<TrackGenre>
-            {
-                new() { GenreId = genre.Id }
-            }
+            TrackArtists = artists
+                .Select(artist => new TrackArtist { ArtistId = artist.Id })
+                .ToList(),
+            TrackGenres = genres
+                .Select(genre => new TrackGenre { GenreId = genre.Id })
+                .ToList()
         };
 
         await _trackRepository.AddAsync(track, cancellationToken);
@@ -252,31 +258,84 @@ public class AdminCatalogService
         return category;
     }
 
-    private async Task<Genre?> ResolveGenreAsync(TrackCreateDto request, CancellationToken cancellationToken)
+    private async Task<List<Artist>> ResolveArtistsAsync(IEnumerable<string> artistNames, CancellationToken cancellationToken)
     {
+        var artists = new List<Artist>();
+        foreach (var artistName in artistNames)
+        {
+            var artist = await _artistRepository.GetByNameAsync(artistName, cancellationToken);
+            if (artist is null)
+            {
+                artist = new Artist { Name = artistName };
+                await _artistRepository.AddAsync(artist, cancellationToken);
+            }
+
+            artists.Add(artist);
+        }
+
+        return artists
+            .GroupBy(a => a.Id)
+            .Select(g => g.First())
+            .ToList();
+    }
+
+    private async Task<List<Genre>> ResolveGenresAsync(TrackCreateDto request, CancellationToken cancellationToken)
+    {
+        var genres = new List<Genre>();
+
         if (request.GenreId > 0)
         {
             var selectedGenre = await _genreRepository.GetByIdAsync(request.GenreId, cancellationToken);
             if (selectedGenre is not null)
             {
-                return selectedGenre;
+                genres.Add(selectedGenre);
             }
         }
 
-        if (string.IsNullOrWhiteSpace(request.GenreName))
+        var genreNames = GetDistinctNames(request.GenreNames, request.GenreName);
+        foreach (var genreName in genreNames)
         {
-            return null;
+            var existing = await _genreRepository.GetByNameAsync(genreName, cancellationToken);
+            if (existing is not null)
+            {
+                genres.Add(existing);
+                continue;
+            }
+
+            var genre = new Genre { Name = genreName };
+            await _genreRepository.AddAsync(genre, cancellationToken);
+            genres.Add(genre);
         }
 
-        var normalized = request.GenreName.Trim();
-        var existing = await _genreRepository.GetByNameAsync(normalized, cancellationToken);
-        if (existing is not null)
+        return genres
+            .GroupBy(g => g.Id)
+            .Select(g => g.First())
+            .ToList();
+    }
+
+    private static List<string> GetDistinctNames(IEnumerable<string>? values, string? fallbackValue)
+    {
+        var result = new List<string>();
+
+        if (values is not null)
         {
-            return existing;
+            result.AddRange(values);
         }
 
-        var genre = new Genre { Name = normalized };
-        await _genreRepository.AddAsync(genre, cancellationToken);
-        return genre;
+        if (!string.IsNullOrWhiteSpace(fallbackValue))
+        {
+            result.AddRange(SplitNames(fallbackValue));
+        }
+
+        return result
+            .Select(static name => name.Trim())
+            .Where(static name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static IEnumerable<string> SplitNames(string rawValue)
+    {
+        return rawValue.Split([',', ';', '|', '/'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 }
