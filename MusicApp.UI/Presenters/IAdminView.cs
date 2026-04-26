@@ -21,6 +21,8 @@ public interface IAdminView
     string? ImportedGenreName { get; }
     TrackDto? SelectedTrack { get; }
     DeezerTrackDto? SelectedDeezerTrack { get; }
+    IReadOnlyList<DeezerTrackDto> SelectedDeezerTracks { get; }
+    IReadOnlyList<DeezerTrackDto> AllDeezerTracks { get; }
     string? PickAudioFile();
     void ApplyAudioMetadata(AudioMetadataDto metadata);
     void TrySelectGenreByName(string? genreName);

@@ -32,6 +32,7 @@ public class AdminForm : Form, IAdminView
     private DataGridView _gridTracks = null!;
     private Label _lblNowPlaying = null!;
     private AxWindowsMediaPlayer _player = null!;
+    private readonly List<DeezerTrackDto> _deezerResults = new();
     private string? _importedGenreName;
 
     public AdminForm(AdminCatalogService catalogService, UserSessionDto session)
@@ -85,6 +86,15 @@ public class AdminForm : Form, IAdminView
     public string? ImportedGenreName => _importedGenreName;
     public TrackDto? SelectedTrack => _gridTracks.CurrentRow?.DataBoundItem as TrackDto;
     public DeezerTrackDto? SelectedDeezerTrack => _gridDeezer.CurrentRow?.DataBoundItem as DeezerTrackDto;
+    public IReadOnlyList<DeezerTrackDto> SelectedDeezerTracks =>
+        _gridDeezer.Rows
+            .Cast<DataGridViewRow>()
+            .Where(row => row.Cells["SelectColumn"].Value is bool isChecked && isChecked)
+            .Select(row => row.DataBoundItem as DeezerTrackDto)
+            .Where(track => track is not null)
+            .Cast<DeezerTrackDto>()
+            .ToList();
+    public IReadOnlyList<DeezerTrackDto> AllDeezerTracks => _deezerResults;
 
     public string? PickAudioFile()
     {
@@ -158,7 +168,9 @@ public class AdminForm : Form, IAdminView
 
     public void SetDeezerResults(IReadOnlyList<DeezerTrackDto> tracks)
     {
-        _deezerSource.DataSource = tracks;
+        _deezerResults.Clear();
+        _deezerResults.AddRange(tracks);
+        _deezerSource.DataSource = _deezerResults.ToList();
         _gridDeezer.DataSource = _deezerSource;
     }
 
@@ -265,29 +277,25 @@ public class AdminForm : Form, IAdminView
     private Control BuildTracksLayout()
     {
         var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
-        var btnPlaySelected = new Button { Text = "Прослушать выбранный", Left = 12, Top = 100, Width = 180 };
+        var btnPlaySelected = new Button { Text = "Прослушать выбранный", Left = 12, Top = 58, Width = 180, Height = 30 };
 
-        var searchPanel = new Panel { Left = 12, Top = 10, Width = 1140, Height = 70 };
-        var titleLabel = new Label { Text = "Название", Left = 0, Top = 0, Width = 70 };
-        _txtTrackSearchTitle = new TextBox { Left = 0, Top = 22, Width = 240 };
-        var artistLabel = new Label { Text = "Исполнитель", Left = 260, Top = 0, Width = 90 };
-        _txtTrackSearchArtist = new TextBox { Left = 260, Top = 22, Width = 240 };
-        var albumLabel = new Label { Text = "Альбом", Left = 520, Top = 0, Width = 60 };
-        _txtTrackSearchAlbum = new TextBox { Left = 520, Top = 22, Width = 240 };
-        var genreLabel = new Label { Text = "Жанр", Left = 780, Top = 0, Width = 50 };
-        _txtTrackSearchGenre = new TextBox { Left = 780, Top = 22, Width = 180 };
-        var btnSearch = new Button { Text = "Поиск", Left = 970, Top = 22, Width = 110 };
-        var btnReset = new Button { Text = "Сбросить", Left = 1090, Top = 22, Width = 110 };
+        var searchPanel = new Panel { Dock = DockStyle.Top, Height = 100 };
+        var titleLabel = new Label { Text = "Название", Left = 0, Top = 10, Width = 70 };
+        _txtTrackSearchTitle = new TextBox { Left = 0, Top = 32, Width = 240 };
+        var artistLabel = new Label { Text = "Исполнитель", Left = 260, Top = 10, Width = 90 };
+        _txtTrackSearchArtist = new TextBox { Left = 260, Top = 32, Width = 240 };
+        var albumLabel = new Label { Text = "Альбом", Left = 520, Top = 10, Width = 60 };
+        _txtTrackSearchAlbum = new TextBox { Left = 520, Top = 32, Width = 240 };
+        var genreLabel = new Label { Text = "Жанр", Left = 780, Top = 10, Width = 50 };
+        _txtTrackSearchGenre = new TextBox { Left = 780, Top = 32, Width = 180 };
+        var btnSearch = new Button { Text = "Поиск", Left = 970, Top = 32, Width = 110, Height = 30 };
+        var btnReset = new Button { Text = "Сбросить", Left = 1090, Top = 32, Width = 110, Height = 30 };
 
-        searchPanel.Controls.AddRange([titleLabel, _txtTrackSearchTitle, artistLabel, _txtTrackSearchArtist, albumLabel, _txtTrackSearchAlbum, genreLabel, _txtTrackSearchGenre, btnSearch, btnReset]);
+        searchPanel.Controls.AddRange([titleLabel, _txtTrackSearchTitle, artistLabel, _txtTrackSearchArtist, albumLabel, _txtTrackSearchAlbum, genreLabel, _txtTrackSearchGenre, btnSearch, btnReset, btnPlaySelected]);
 
         _gridTracks = new DataGridView
         {
-            Top = 140,
-            Left = 12,
-            Width = 1140,
-            Height = 428,
-            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+            Dock = DockStyle.Fill,
             ReadOnly = true,
             AutoGenerateColumns = true,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
@@ -296,9 +304,8 @@ public class AdminForm : Form, IAdminView
             DataSource = _tracksSource
         };
 
-        panel.Controls.Add(searchPanel);
-        panel.Controls.Add(btnPlaySelected);
         panel.Controls.Add(_gridTracks);
+        panel.Controls.Add(searchPanel);
 
         btnSearch.Click += async (_, _) => await _presenter.SearchTracksAsync();
         btnReset.Click += async (_, _) =>
@@ -316,35 +323,67 @@ public class AdminForm : Form, IAdminView
     private Control BuildDeezerLayout()
     {
         var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
-        _txtDeezerQuery = new TextBox { Left = 12, Top = 12, Width = 420 };
-        var btnSearch = new Button { Text = "Поиск Deezer", Left = 440, Top = 10, Width = 120 };
-        var btnImport = new Button { Text = "Импортировать", Left = 570, Top = 10, Width = 130 };
-        var btnPlayPreview = new Button { Text = "Слушать preview", Left = 710, Top = 10, Width = 140 };
+        _txtDeezerQuery = new TextBox { Left = 12, Top = 12, Width = 560 };
+        var btnSearch = new Button { Text = "Поиск Deezer", Left = 584, Top = 12, Width = 140, Height = 30 };
+        var btnImport = new Button { Text = "Импортировать", Left = 730, Top = 12, Width = 150, Height = 30 };
+        var btnPlayPreview = new Button { Text = "Слушать preview", Left = 12, Top = 48, Width = 150, Height = 30 };
+        var btnSelectAll = new Button { Text = "Выбрать все", Left = 174, Top = 48, Width = 130, Height = 30 };
+        var btnClearSelection = new Button { Text = "Сбросить выбор", Left = 316, Top = 48, Width = 140, Height = 30 };
 
         _gridDeezer = new DataGridView
         {
-            Top = 48,
+            Top = 90,
             Left = 12,
-            Width = 1120,
+            Width = 1180,
             Height = 520,
             Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
-            ReadOnly = true,
+            ReadOnly = false,
             AutoGenerateColumns = true,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-            MultiSelect = false,
+            MultiSelect = true,
             AllowUserToAddRows = false,
             DataSource = _deezerSource
+        };
+
+        var selectColumn = new DataGridViewCheckBoxColumn
+        {
+            Name = "SelectColumn",
+            HeaderText = "Выбрать",
+            Width = 60,
+            ReadOnly = false,
+            TrueValue = true,
+            FalseValue = false
         };
 
         panel.Controls.Add(_txtDeezerQuery);
         panel.Controls.Add(btnSearch);
         panel.Controls.Add(btnImport);
         panel.Controls.Add(btnPlayPreview);
+        panel.Controls.Add(btnSelectAll);
+        panel.Controls.Add(btnClearSelection);
         panel.Controls.Add(_gridDeezer);
 
         btnSearch.Click += async (_, _) => await _presenter.SearchDeezerAsync();
-        btnImport.Click += async (_, _) => await _presenter.ImportSelectedDeezerTrackAsync();
+        btnImport.Click += async (_, _) => await _presenter.ImportDeezerTracksAsync();
         btnPlayPreview.Click += async (_, _) => await _presenter.PlaySelectedDeezerTrackAsync();
+        btnSelectAll.Click += (_, _) => SetAllDeezerSelection(true);
+        btnClearSelection.Click += (_, _) => SetAllDeezerSelection(false);
+
+        _gridDeezer.DataBindingComplete += (_, _) =>
+        {
+            if (!_gridDeezer.Columns.Contains("SelectColumn"))
+            {
+                _gridDeezer.Columns.Insert(0, selectColumn);
+            }
+
+            foreach (DataGridViewColumn column in _gridDeezer.Columns)
+            {
+                if (column.Name != "SelectColumn")
+                {
+                    column.ReadOnly = true;
+                }
+            }
+        };
 
         return panel;
     }
@@ -368,6 +407,17 @@ public class AdminForm : Form, IAdminView
         playerPanel.Controls.Add(_player);
         playerPanel.Controls.Add(_lblNowPlaying);
         return playerPanel;
+    }
+
+    private void SetAllDeezerSelection(bool isSelected)
+    {
+        foreach (DataGridViewRow row in _gridDeezer.Rows)
+        {
+            if (row.Cells["SelectColumn"] is DataGridViewCheckBoxCell checkBoxCell)
+            {
+                checkBoxCell.Value = isSelected;
+            }
+        }
     }
 
     private static DataGridView CreateGrid(object dataSource)

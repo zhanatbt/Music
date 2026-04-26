@@ -55,7 +55,7 @@ public class AdminCatalogService
     public async Task<IReadOnlyList<TrackDto>> GetTracksAsync(CancellationToken cancellationToken = default)
     {
         var tracks = await _trackRepository.GetAllAsync(cancellationToken);
-        return tracks.Select(TrackMapper.ToDto).ToList();
+        return NormalizeTrackPreviewUrls(tracks);
     }
 
     public async Task<IReadOnlyList<TrackDto>> SearchTracksAsync(
@@ -76,7 +76,21 @@ public class AdminCatalogService
             title: title,
             artist: artist,
             cancellationToken: cancellationToken);
-        return tracks.Select(TrackMapper.ToDto).ToList();
+        return NormalizeTrackPreviewUrls(tracks);
+    }
+
+    private IReadOnlyList<TrackDto> NormalizeTrackPreviewUrls(IReadOnlyList<Track> tracks)
+    {
+        var trackDtos = tracks.Select(TrackMapper.ToDto).ToList();
+        foreach (var trackDto in trackDtos)
+        {
+            if (!string.IsNullOrWhiteSpace(trackDto.PreviewUrl))
+            {
+                trackDto.PreviewUrl = _fileStorageService.GetAbsolutePath(trackDto.PreviewUrl);
+            }
+        }
+
+        return trackDtos;
     }
 
     public async Task<IReadOnlyList<UserSessionDto>> GetUsersAsync(CancellationToken cancellationToken = default)

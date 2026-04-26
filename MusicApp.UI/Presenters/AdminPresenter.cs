@@ -92,39 +92,61 @@ public class AdminPresenter
         _view.SetTracks(tracks);
     }
 
-    public async Task ImportSelectedDeezerTrackAsync()
+    public async Task ImportDeezerTracksAsync()
     {
-        if (_view.SelectedDeezerTrack is null)
-        {
-            _view.ShowMessage("Выберите трек из результатов Deezer.", "Ошибка");
-            return;
-        }
-
         if (!_view.SelectedGenreId.HasValue)
         {
-            _view.ShowMessage("Для импортируемого трека выберите жанр.", "Ошибка");
+            _view.ShowMessage("Для импортируемых треков выберите жанр.", "Ошибка");
             return;
         }
 
-        var request = new TrackCreateDto
+        var tracksToImport = _view.SelectedDeezerTracks.ToList();
+        if (!tracksToImport.Any() && _view.SelectedDeezerTrack is not null)
         {
-            Title = _view.SelectedDeezerTrack.Title,
-            ArtistName = _view.SelectedDeezerTrack.ArtistName,
-            AlbumTitle = _view.SelectedDeezerTrack.AlbumTitle,
-            DurationSeconds = _view.SelectedDeezerTrack.DurationSeconds,
-            DeezerId = _view.SelectedDeezerTrack.DeezerId,
-            PreviewUrl = _view.SelectedDeezerTrack.PreviewUrl,
-            GenreId = _view.SelectedGenreId.Value,
+            tracksToImport.Add(_view.SelectedDeezerTrack);
+        }
+
+        if (!tracksToImport.Any())
+        {
+            _view.ShowMessage("Выберите трек или отметьте несколько треков для импорта.", "Ошибка");
+            return;
+        }
+
+        var importResults = new List<string>();
+        foreach (var track in tracksToImport)
+        {
+            try
+            {
+                var request = CreateDeezerTrackRequest(track);
+                var result = await _catalogService.AddTrackAsync(request);
+                importResults.Add(result.Success
+                    ? $"{track.ArtistName} - {track.Title}: импортировано"
+                    : $"{track.ArtistName} - {track.Title}: {result.Message}");
+            }
+            catch (Exception ex)
+            {
+                importResults.Add($"{track.ArtistName} - {track.Title}: ошибка {ex.Message}");
+            }
+        }
+
+        _view.ShowMessage(string.Join(Environment.NewLine, importResults), "Результат импорта");
+        await ReloadAsync();
+    }
+
+    private TrackCreateDto CreateDeezerTrackRequest(DeezerTrackDto track)
+    {
+        return new TrackCreateDto
+        {
+            Title = track.Title,
+            ArtistName = track.ArtistName,
+            AlbumTitle = track.AlbumTitle,
+            DurationSeconds = track.DurationSeconds,
+            DeezerId = track.DeezerId,
+            PreviewUrl = track.PreviewUrl,
+            GenreId = _view.SelectedGenreId!.Value,
             CategoryId = _view.SelectedCategoryId,
             SourceType = "Deezer"
         };
-
-        var result = await _catalogService.AddTrackAsync(request);
-        _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
-        if (result.Success)
-        {
-            await ReloadAsync();
-        }
     }
 
     public Task PlaySelectedTrackAsync()
