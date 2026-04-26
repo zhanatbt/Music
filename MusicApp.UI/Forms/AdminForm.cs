@@ -14,8 +14,6 @@ public class AdminForm : Form, IAdminView
     private readonly BindingSource _usersSource = new();
     private readonly BindingSource _deezerSource = new();
 
-    private TextBox _txtGenre = null!;
-    private TextBox _txtCategory = null!;
     private TextBox _txtTrackTitle = null!;
     private TextBox _txtArtist = null!;
     private TextBox _txtAlbum = null!;
@@ -69,8 +67,8 @@ public class AdminForm : Form, IAdminView
         Load += async (_, _) => await _presenter.LoadAsync();
     }
 
-    public string GenreName => _txtGenre.Text;
-    public string CategoryName => _txtCategory.Text;
+    public string GenreName => _cmbGenre.Text;
+    public string CategoryName => _cmbCategory.Text;
     public string TrackTitle => _txtTrackTitle.Text;
     public string ArtistName => _txtArtist.Text;
     public string AlbumTitle => _txtAlbum.Text;
@@ -188,8 +186,8 @@ public class AdminForm : Form, IAdminView
 
     public void ClearEntryFields()
     {
-        _txtGenre.Clear();
-        _txtCategory.Clear();
+        _cmbGenre.Text = string.Empty;
+        _cmbCategory.Text = string.Empty;
         _txtTrackTitle.Clear();
         _txtArtist.Clear();
         _txtAlbum.Clear();
@@ -210,64 +208,50 @@ public class AdminForm : Form, IAdminView
             RowCount = 8
         };
 
-        top.Controls.Add(new Label { Text = "Новый жанр" }, 0, 0);
-        _txtGenre = new TextBox();
-        top.Controls.Add(_txtGenre, 1, 0);
-        var btnAddGenre = new Button { Text = "Добавить жанр" };
-        top.Controls.Add(btnAddGenre, 2, 0);
-
-        top.Controls.Add(new Label { Text = "Новая категория" }, 0, 1);
-        _txtCategory = new TextBox();
-        top.Controls.Add(_txtCategory, 1, 1);
-        var btnAddCategory = new Button { Text = "Добавить категорию" };
-        top.Controls.Add(btnAddCategory, 2, 1);
-
-        top.Controls.Add(new Label { Text = "Аудиофайл" }, 0, 2);
+        top.Controls.Add(new Label { Text = "Аудиофайл" }, 0, 0);
         _txtAudioFilePath = new TextBox { ReadOnly = true };
-        top.Controls.Add(_txtAudioFilePath, 1, 2);
+        top.Controls.Add(_txtAudioFilePath, 1, 0);
         var btnPickAudio = new Button { Text = "Выбрать mp3" };
-        top.Controls.Add(btnPickAudio, 2, 2);
+        top.Controls.Add(btnPickAudio, 2, 0);
 
-        top.Controls.Add(new Label { Text = "Трек" }, 0, 3);
+        top.Controls.Add(new Label { Text = "Трек" }, 0, 1);
         _txtTrackTitle = new TextBox();
-        top.Controls.Add(_txtTrackTitle, 1, 3);
+        top.Controls.Add(_txtTrackTitle, 1, 1);
 
-        top.Controls.Add(new Label { Text = "Исполнитель" }, 0, 4);
+        top.Controls.Add(new Label { Text = "Исполнитель" }, 0, 2);
         _txtArtist = new TextBox();
-        top.Controls.Add(_txtArtist, 1, 4);
+        top.Controls.Add(_txtArtist, 1, 2);
 
-        top.Controls.Add(new Label { Text = "Альбом" }, 2, 3);
+        top.Controls.Add(new Label { Text = "Альбом" }, 2, 1);
         _txtAlbum = new TextBox();
-        top.Controls.Add(_txtAlbum, 3, 3);
+        top.Controls.Add(_txtAlbum, 3, 1);
 
-        top.Controls.Add(new Label { Text = "Длительность, сек" }, 2, 4);
+        top.Controls.Add(new Label { Text = "Длительность, сек" }, 2, 2);
         _numDuration = new NumericUpDown { Maximum = 10000, Minimum = 0, Value = 180 };
-        top.Controls.Add(_numDuration, 3, 4);
+        top.Controls.Add(_numDuration, 3, 2);
 
-        top.Controls.Add(new Label { Text = "Жанр" }, 0, 5);
-        _cmbGenre = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
-        top.Controls.Add(_cmbGenre, 1, 5);
+        top.Controls.Add(new Label { Text = "Жанр" }, 0, 3);
+        _cmbGenre = new ComboBox { DropDownStyle = ComboBoxStyle.DropDown, AutoCompleteMode = AutoCompleteMode.SuggestAppend, AutoCompleteSource = AutoCompleteSource.ListItems };
+        top.Controls.Add(_cmbGenre, 1, 3);
 
-        top.Controls.Add(new Label { Text = "Категория" }, 2, 5);
-        _cmbCategory = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
-        top.Controls.Add(_cmbCategory, 3, 5);
+        top.Controls.Add(new Label { Text = "Категория" }, 2, 3);
+        _cmbCategory = new ComboBox { DropDownStyle = ComboBoxStyle.DropDown, AutoCompleteMode = AutoCompleteMode.SuggestAppend, AutoCompleteSource = AutoCompleteSource.ListItems };
+        top.Controls.Add(_cmbCategory, 3, 3);
 
         top.Controls.Add(new Label
         {
-            Text = "Если у mp3 есть теги, поля заполнятся автоматически. Жанр будет выбран или создан при сохранении.",
+            Text = "Если у mp3 есть теги, поля заполнятся автоматически. Жанр и категория будут выбраны или созданы при сохранении.",
             AutoSize = true
-        }, 0, 6);
+        }, 0, 4);
 
         var btnAddTrack = new Button { Text = "Сохранить трек" };
-        top.Controls.Add(btnAddTrack, 1, 7);
+        top.Controls.Add(btnAddTrack, 1, 5);
 
         var lowerGrid = CreateGrid(_tracksSource);
 
         root.Panel1.Controls.Add(top);
         root.Panel2.Controls.Add(lowerGrid);
 
-        btnAddGenre.Click += async (_, _) => await _presenter.AddGenreAsync();
-        btnAddCategory.Click += async (_, _) => await _presenter.AddCategoryAsync();
         btnPickAudio.Click += async (_, _) => await _presenter.ImportAudioFileAsync();
         btnAddTrack.Click += async (_, _) => await _presenter.AddManualTrackAsync();
 

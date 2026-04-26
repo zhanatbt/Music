@@ -61,8 +61,9 @@ public class AdminPresenter
             AlbumTitle = _view.AlbumTitle,
             DurationSeconds = _view.DurationSeconds,
             GenreId = _view.SelectedGenreId ?? 0,
-            GenreName = _view.ImportedGenreName,
+            GenreName = _view.GenreName,
             CategoryId = _view.SelectedCategoryId,
+            CategoryName = _view.CategoryName,
             AudioFilePath = _view.ImportedAudioFilePath,
             SourceType = !string.IsNullOrWhiteSpace(_view.ImportedAudioFilePath) ? "LocalFile" : "Manual"
         };

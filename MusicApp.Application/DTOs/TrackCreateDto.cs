@@ -7,6 +7,7 @@ public class TrackCreateDto
     public string? AlbumTitle { get; set; }
     public int GenreId { get; set; }
     public string? GenreName { get; set; }
+    public string? CategoryName { get; set; }
     public int? CategoryId { get; set; }
     public int DurationSeconds { get; set; }
     public string? DeezerId { get; set; }

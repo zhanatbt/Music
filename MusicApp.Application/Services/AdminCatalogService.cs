@@ -153,14 +153,10 @@ public class AdminCatalogService
             return OperationResult.Fail("Выберите жанр или импортируйте тег жанра из mp3.");
         }
 
-        Category? category = null;
-        if (request.CategoryId.HasValue)
+        var category = await ResolveCategoryAsync(request, cancellationToken);
+        if (category is null && request.CategoryId.HasValue)
         {
-            category = await _categoryRepository.GetByIdAsync(request.CategoryId.Value, cancellationToken);
-            if (category is null)
-            {
-                return OperationResult.Fail("Выбранная категория не найдена.");
-            }
+            return OperationResult.Fail("Выбранная категория не найдена.");
         }
 
         var artist = await _artistRepository.GetByNameAsync(request.ArtistName.Trim(), cancellationToken);
@@ -230,6 +226,30 @@ public class AdminCatalogService
     public Task<IReadOnlyList<DeezerTrackDto>> SearchDeezerAsync(string query, CancellationToken cancellationToken = default)
     {
         return _musicImportClient.SearchAsync(query, cancellationToken);
+    }
+
+    private async Task<Category?> ResolveCategoryAsync(TrackCreateDto request, CancellationToken cancellationToken)
+    {
+        if (request.CategoryId.HasValue)
+        {
+            return await _categoryRepository.GetByIdAsync(request.CategoryId.Value, cancellationToken);
+        }
+
+        if (string.IsNullOrWhiteSpace(request.CategoryName))
+        {
+            return null;
+        }
+
+        var normalized = request.CategoryName.Trim();
+        var existing = await _categoryRepository.GetByNameAsync(normalized, cancellationToken);
+        if (existing is not null)
+        {
+            return existing;
+        }
+
+        var category = new Category { Name = normalized };
+        await _categoryRepository.AddAsync(category, cancellationToken);
+        return category;
     }
 
     private async Task<Genre?> ResolveGenreAsync(TrackCreateDto request, CancellationToken cancellationToken)
