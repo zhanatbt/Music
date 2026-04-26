@@ -4,7 +4,10 @@ namespace MusicApp.UI.Presenters;
 
 public interface IMainView
 {
-    string SearchText { get; }
+    string TitleFilter { get; }
+    string ArtistFilter { get; }
+    string AlbumFilter { get; }
+    string GenreFilter { get; }
     int? SelectedTrackId { get; }
     int? SelectedPlaylistId { get; }
     int? SelectedPlaylistTrackId { get; }

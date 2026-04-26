@@ -13,7 +13,10 @@ public class MainForm : Form, IMainView
     private readonly BindingSource _playlistTracksSource = new();
     private bool _suppressPlaylistSelectionChanged;
 
-    private readonly TextBox _txtSearch;
+    private TextBox _txtTitleFilter = null!;
+    private TextBox _txtArtistFilter = null!;
+    private TextBox _txtAlbumFilter = null!;
+    private TextBox _txtGenreFilter = null!;
     private TextBox _txtNewPlaylist = null!;
     private readonly DataGridView _gridTracks;
     private DataGridView _gridPlaylists = null!;
@@ -30,12 +33,26 @@ public class MainForm : Form, IMainView
         Height = 760;
         StartPosition = FormStartPosition.CenterParent;
 
-        var header = new Panel { Dock = DockStyle.Top, Height = 56, Padding = new Padding(12) };
-        _txtSearch = new TextBox { Left = 12, Top = 14, Width = 420 };
-        var btnSearch = new Button { Text = "Поиск", Left = 440, Top = 12, Width = 110 };
-        var btnPlay = new Button { Text = "Слушать preview", Left = 560, Top = 12, Width = 140 };
-        var btnAddToPlaylist = new Button { Text = "Добавить в выбранный плейлист", Left = 710, Top = 12, Width = 220 };
-        header.Controls.AddRange([_txtSearch, btnSearch, btnPlay, btnAddToPlaylist]);
+        var header = new Panel { Dock = DockStyle.Top, Height = 106, Padding = new Padding(12) };
+
+        var titleLabel = new Label { Text = "Название", Left = 12, Top = 14, Width = 80 };
+        _txtTitleFilter = new TextBox { Left = 98, Top = 12, Width = 220 };
+
+        var artistLabel = new Label { Text = "Исполнитель", Left = 330, Top = 14, Width = 90 };
+        _txtArtistFilter = new TextBox { Left = 425, Top = 12, Width = 220 };
+
+        var albumLabel = new Label { Text = "Альбом", Left = 12, Top = 48, Width = 80 };
+        _txtAlbumFilter = new TextBox { Left = 98, Top = 46, Width = 220 };
+
+        var genreLabel = new Label { Text = "Жанр", Left = 330, Top = 48, Width = 90 };
+        _txtGenreFilter = new TextBox { Left = 425, Top = 46, Width = 220 };
+
+        var btnSearch = new Button { Text = "Поиск", Left = 660, Top = 28, Width = 110 };
+        var btnReset = new Button { Text = "Сбросить", Left = 780, Top = 28, Width = 110 };
+        var btnPlay = new Button { Text = "Слушать preview", Left = 900, Top = 12, Width = 140 };
+        var btnAddToPlaylist = new Button { Text = "Добавить в выбранный плейлист", Left = 1050, Top = 12, Width = 220 };
+
+        header.Controls.AddRange([titleLabel, _txtTitleFilter, artistLabel, _txtArtistFilter, albumLabel, _txtAlbumFilter, genreLabel, _txtGenreFilter, btnSearch, btnReset, btnPlay, btnAddToPlaylist]);
 
         var leftSplit = new SplitContainer
         {
@@ -84,6 +101,14 @@ public class MainForm : Form, IMainView
 
         Load += async (_, _) => await _presenter.LoadAsync();
         btnSearch.Click += async (_, _) => await _presenter.SearchAsync();
+        btnReset.Click += async (_, _) =>
+        {
+            _txtTitleFilter.Clear();
+            _txtArtistFilter.Clear();
+            _txtAlbumFilter.Clear();
+            _txtGenreFilter.Clear();
+            await _presenter.SearchAsync();
+        };
         btnAddToPlaylist.Click += async (_, _) => await _presenter.AddSelectedTrackToPlaylistAsync();
         btnPlay.Click += async (_, _) => await _presenter.PlayPreviewAsync();
     }
@@ -184,7 +209,10 @@ public class MainForm : Form, IMainView
         return panel;
     }
 
-    public string SearchText => _txtSearch.Text;
+    public string TitleFilter => _txtTitleFilter.Text;
+    public string ArtistFilter => _txtArtistFilter.Text;
+    public string AlbumFilter => _txtAlbumFilter.Text;
+    public string GenreFilter => _txtGenreFilter.Text;
 
     public int? SelectedTrackId => _gridTracks.CurrentRow?.DataBoundItem is TrackDto track ? track.Id : null;
 

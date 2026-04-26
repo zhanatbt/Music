@@ -55,6 +55,27 @@ public class AdminCatalogService
         return tracks.Select(TrackMapper.ToDto).ToList();
     }
 
+    public async Task<IReadOnlyList<TrackDto>> SearchTracksAsync(
+        string? album = null,
+        string? genre = null,
+        string? title = null,
+        string? artist = null,
+        int? genreId = null,
+        int? categoryId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var tracks = await _trackRepository.SearchAsync(
+            query: null,
+            genreId: genreId,
+            categoryId: categoryId,
+            album: album,
+            genre: genre,
+            title: title,
+            artist: artist,
+            cancellationToken: cancellationToken);
+        return tracks.Select(TrackMapper.ToDto).ToList();
+    }
+
     public async Task<IReadOnlyList<UserSessionDto>> GetUsersAsync(CancellationToken cancellationToken = default)
     {
         var users = await _userRepository.GetAllAsync(cancellationToken);

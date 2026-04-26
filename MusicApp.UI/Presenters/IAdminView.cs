@@ -12,6 +12,10 @@ public interface IAdminView
     int DurationSeconds { get; }
     int? SelectedGenreId { get; }
     int? SelectedCategoryId { get; }
+    string TrackSearchTitle { get; }
+    string TrackSearchArtist { get; }
+    string TrackSearchAlbum { get; }
+    string TrackSearchGenre { get; }
     string DeezerQuery { get; }
     string? ImportedAudioFilePath { get; }
     string? ImportedGenreName { get; }

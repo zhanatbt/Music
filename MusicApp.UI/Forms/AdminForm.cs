@@ -23,6 +23,10 @@ public class AdminForm : Form, IAdminView
     private NumericUpDown _numDuration = null!;
     private ComboBox _cmbGenre = null!;
     private ComboBox _cmbCategory = null!;
+    private TextBox _txtTrackSearchTitle = null!;
+    private TextBox _txtTrackSearchArtist = null!;
+    private TextBox _txtTrackSearchAlbum = null!;
+    private TextBox _txtTrackSearchGenre = null!;
     private TextBox _txtDeezerQuery = null!;
     private DataGridView _gridDeezer = null!;
     private DataGridView _gridTracks = null!;
@@ -72,6 +76,10 @@ public class AdminForm : Form, IAdminView
     public int DurationSeconds => (int)_numDuration.Value;
     public int? SelectedGenreId => (_cmbGenre.SelectedItem as GenreDto)?.Id;
     public int? SelectedCategoryId => (_cmbCategory.SelectedItem as CategoryDto)?.Id;
+    public string TrackSearchTitle => _txtTrackSearchTitle.Text;
+    public string TrackSearchArtist => _txtTrackSearchArtist.Text;
+    public string TrackSearchAlbum => _txtTrackSearchAlbum.Text;
+    public string TrackSearchGenre => _txtTrackSearchGenre.Text;
     public string DeezerQuery => _txtDeezerQuery.Text;
     public string? ImportedAudioFilePath => string.IsNullOrWhiteSpace(_txtAudioFilePath.Text) ? null : _txtAudioFilePath.Text;
     public string? ImportedGenreName => _importedGenreName;
@@ -257,13 +265,28 @@ public class AdminForm : Form, IAdminView
     private Control BuildTracksLayout()
     {
         var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
-        var btnPlaySelected = new Button { Text = "Прослушать выбранный", Left = 12, Top = 10, Width = 180 };
+        var btnPlaySelected = new Button { Text = "Прослушать выбранный", Left = 12, Top = 100, Width = 180 };
+
+        var searchPanel = new Panel { Left = 12, Top = 10, Width = 1140, Height = 70 };
+        var titleLabel = new Label { Text = "Название", Left = 0, Top = 0, Width = 70 };
+        _txtTrackSearchTitle = new TextBox { Left = 0, Top = 22, Width = 240 };
+        var artistLabel = new Label { Text = "Исполнитель", Left = 260, Top = 0, Width = 90 };
+        _txtTrackSearchArtist = new TextBox { Left = 260, Top = 22, Width = 240 };
+        var albumLabel = new Label { Text = "Альбом", Left = 520, Top = 0, Width = 60 };
+        _txtTrackSearchAlbum = new TextBox { Left = 520, Top = 22, Width = 240 };
+        var genreLabel = new Label { Text = "Жанр", Left = 780, Top = 0, Width = 50 };
+        _txtTrackSearchGenre = new TextBox { Left = 780, Top = 22, Width = 180 };
+        var btnSearch = new Button { Text = "Поиск", Left = 970, Top = 22, Width = 110 };
+        var btnReset = new Button { Text = "Сбросить", Left = 1090, Top = 22, Width = 110 };
+
+        searchPanel.Controls.AddRange([titleLabel, _txtTrackSearchTitle, artistLabel, _txtTrackSearchArtist, albumLabel, _txtTrackSearchAlbum, genreLabel, _txtTrackSearchGenre, btnSearch, btnReset]);
+
         _gridTracks = new DataGridView
         {
-            Top = 48,
+            Top = 140,
             Left = 12,
             Width = 1140,
-            Height = 520,
+            Height = 428,
             Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
             ReadOnly = true,
             AutoGenerateColumns = true,
@@ -273,9 +296,19 @@ public class AdminForm : Form, IAdminView
             DataSource = _tracksSource
         };
 
+        panel.Controls.Add(searchPanel);
         panel.Controls.Add(btnPlaySelected);
         panel.Controls.Add(_gridTracks);
 
+        btnSearch.Click += async (_, _) => await _presenter.SearchTracksAsync();
+        btnReset.Click += async (_, _) =>
+        {
+            _txtTrackSearchTitle.Clear();
+            _txtTrackSearchArtist.Clear();
+            _txtTrackSearchAlbum.Clear();
+            _txtTrackSearchGenre.Clear();
+            await _presenter.SearchTracksAsync();
+        };
         btnPlaySelected.Click += async (_, _) => await _presenter.PlaySelectedTrackAsync();
         return panel;
     }

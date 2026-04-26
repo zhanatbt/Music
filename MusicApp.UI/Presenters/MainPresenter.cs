@@ -110,7 +110,12 @@ public class MainPresenter
                 return;
             }
 
-            var tracks = await _musicLibraryService.SearchTracksAsync(_view.SearchText);
+            var tracks = await _musicLibraryService.SearchTracksAsync(
+                query: null,
+                album: _view.AlbumFilter,
+                genre: _view.GenreFilter,
+                title: _view.TitleFilter,
+                artist: _view.ArtistFilter);
             var selected = tracks.FirstOrDefault(x => x.Id == _view.SelectedTrackId.Value);
             if (selected is null || string.IsNullOrWhiteSpace(selected.PreviewUrl))
             {
@@ -124,7 +129,12 @@ public class MainPresenter
 
     private async Task ReloadTracksAsync()
     {
-        var tracks = await _musicLibraryService.SearchTracksAsync(_view.SearchText);
+        var tracks = await _musicLibraryService.SearchTracksAsync(
+            query: null,
+            album: _view.AlbumFilter,
+            genre: _view.GenreFilter,
+            title: _view.TitleFilter,
+            artist: _view.ArtistFilter);
         _view.SetTracks(tracks);
     }
 

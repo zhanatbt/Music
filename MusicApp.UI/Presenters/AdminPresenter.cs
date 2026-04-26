@@ -82,6 +82,16 @@ public class AdminPresenter
         _view.SetDeezerResults(tracks);
     }
 
+    public async Task SearchTracksAsync()
+    {
+        var tracks = await _catalogService.SearchTracksAsync(
+            album: _view.TrackSearchAlbum,
+            genre: _view.TrackSearchGenre,
+            title: _view.TrackSearchTitle,
+            artist: _view.TrackSearchArtist);
+        _view.SetTracks(tracks);
+    }
+
     public async Task ImportSelectedDeezerTrackAsync()
     {
         if (_view.SelectedDeezerTrack is null)
