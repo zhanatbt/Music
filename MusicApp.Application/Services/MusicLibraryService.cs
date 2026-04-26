@@ -10,11 +10,16 @@ public class MusicLibraryService
 {
     private readonly ITrackRepository _trackRepository;
     private readonly IPlaylistRepository _playlistRepository;
+    private readonly IFileStorageService _fileStorageService;
 
-    public MusicLibraryService(ITrackRepository trackRepository, IPlaylistRepository playlistRepository)
+    public MusicLibraryService(
+        ITrackRepository trackRepository,
+        IPlaylistRepository playlistRepository,
+        IFileStorageService fileStorageService)
     {
         _trackRepository = trackRepository;
         _playlistRepository = playlistRepository;
+        _fileStorageService = fileStorageService;
     }
 
     public async Task<IReadOnlyList<TrackDto>> SearchTracksAsync(
@@ -36,7 +41,23 @@ public class MusicLibraryService
             title,
             artist,
             cancellationToken);
-        return tracks.Select(TrackMapper.ToDto).ToList();
+
+        return NormalizeTrackPreviewUrls(tracks);
+    }
+
+    private IReadOnlyList<TrackDto> NormalizeTrackPreviewUrls(IReadOnlyList<Track> tracks)
+    {
+        var trackDtos = tracks.Select(TrackMapper.ToDto).ToList();
+
+        foreach (var trackDto in trackDtos)
+        {
+            if (!string.IsNullOrWhiteSpace(trackDto.PreviewUrl))
+            {
+                trackDto.PreviewUrl = _fileStorageService.GetAbsolutePath(trackDto.PreviewUrl);
+            }
+        }
+
+        return trackDtos;
     }
 
     public async Task<IReadOnlyList<PlaylistDto>> GetPlaylistsAsync(int userId, CancellationToken cancellationToken = default)
@@ -48,7 +69,7 @@ public class MusicLibraryService
     public async Task<IReadOnlyList<TrackDto>> GetPlaylistTracksAsync(int playlistId, CancellationToken cancellationToken = default)
     {
         var tracks = await _playlistRepository.GetTracksByPlaylistIdAsync(playlistId, cancellationToken);
-        return tracks.Select(TrackMapper.ToDto).ToList();
+        return NormalizeTrackPreviewUrls(tracks);
     }
 
     public async Task<OperationResult<PlaylistDto>> CreatePlaylistAsync(int userId, string playlistName, CancellationToken cancellationToken = default)

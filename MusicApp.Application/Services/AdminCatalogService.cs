@@ -16,6 +16,7 @@ public class AdminCatalogService
     private readonly IUserRepository _userRepository;
     private readonly IMusicImportClient _musicImportClient;
     private readonly IAudioMetadataReader _audioMetadataReader;
+    private readonly IFileStorageService _fileStorageService;
 
     public AdminCatalogService(
         IGenreRepository genreRepository,
@@ -25,7 +26,8 @@ public class AdminCatalogService
         IAlbumRepository albumRepository,
         IUserRepository userRepository,
         IMusicImportClient musicImportClient,
-        IAudioMetadataReader audioMetadataReader)
+        IAudioMetadataReader audioMetadataReader,
+        IFileStorageService fileStorageService)
     {
         _genreRepository = genreRepository;
         _categoryRepository = categoryRepository;
@@ -35,6 +37,7 @@ public class AdminCatalogService
         _userRepository = userRepository;
         _musicImportClient = musicImportClient;
         _audioMetadataReader = audioMetadataReader;
+        _fileStorageService = fileStorageService;
     }
 
     public async Task<IReadOnlyList<GenreDto>> GetGenresAsync(CancellationToken cancellationToken = default)
@@ -176,9 +179,16 @@ public class AdminCatalogService
             return OperationResult.Fail("Такой трек уже есть в каталоге.");
         }
 
-        var playbackSource = !string.IsNullOrWhiteSpace(request.AudioFilePath)
-            ? request.AudioFilePath
-            : request.PreviewUrl;
+        string? playbackSource = null;
+
+        if (!string.IsNullOrWhiteSpace(request.AudioFilePath))
+        {
+            playbackSource = await _fileStorageService.SaveAsync(request.AudioFilePath, cancellationToken);
+        }
+        else if (!string.IsNullOrWhiteSpace(request.PreviewUrl))
+        {
+            playbackSource = await _fileStorageService.SaveFromUrlAsync(request.PreviewUrl, cancellationToken);
+        }
 
         var track = new Track
         {

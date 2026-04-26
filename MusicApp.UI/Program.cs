@@ -6,6 +6,7 @@ using MusicApp.Infrastructure.Data;
 using MusicApp.Infrastructure.External;
 using MusicApp.Infrastructure.Repositories;
 using MusicApp.Infrastructure.Security;
+using MusicApp.Infrastructure.Storage;
 using MusicApp.UI.Forms;
 
 namespace MusicApp.UI;
@@ -45,6 +46,7 @@ internal static class Program
             BaseAddress = new Uri("https://api.deezer.com/")
         };
 
+        var fileStorageService = new LocalFileStorageService(httpClient, AppContext.BaseDirectory);
         var authService = new AuthService(userRepository, passwordHasher, passwordValidator);
         var adminCatalogService = new AdminCatalogService(
             genreRepository,
@@ -54,8 +56,9 @@ internal static class Program
             albumRepository,
             userRepository,
             new DeezerClient(httpClient),
-            new TagLibAudioMetadataReader());
-        var musicLibraryService = new MusicLibraryService(trackRepository, playlistRepository);
+            new TagLibAudioMetadataReader(),
+            fileStorageService);
+        var musicLibraryService = new MusicLibraryService(trackRepository, playlistRepository, fileStorageService);
 
         System.Windows.Forms.Application.Run(new LoginForm(authService, adminCatalogService, musicLibraryService));
     }
