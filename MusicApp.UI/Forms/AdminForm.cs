@@ -47,6 +47,7 @@ public partial class AdminForm : Form, IAdminView
     private List<ArtistDto> _artistLookupAll = [];
     private List<GenreDto> _allGenres = [];
     private List<ArtistDto> _allArtists = [];
+    private int? _editingTrackId;
     private string? _importedGenreName;
 
     public AdminForm()
@@ -102,6 +103,7 @@ public partial class AdminForm : Form, IAdminView
     public string NewArtistName => _txtNewArtistName?.Text ?? string.Empty;
     public int? SelectedGenreLookupId => _gridGenreLookup?.CurrentRow?.DataBoundItem is GenreDto genre ? genre.Id : null;
     public int? SelectedArtistLookupId => _gridArtistLookup?.CurrentRow?.DataBoundItem is ArtistDto artist ? artist.Id : null;
+    public int? EditingTrackId => _editingTrackId;
     public string DeezerQuery => _txtDeezerQuery.Text;
     public string? ImportedAudioFilePath => string.IsNullOrWhiteSpace(_txtAudioFilePath.Text) ? null : _txtAudioFilePath.Text;
     public string? ImportedGenreName => _importedGenreName;
@@ -238,6 +240,7 @@ public partial class AdminForm : Form, IAdminView
 
     public void ClearEntryFields()
     {
+        _editingTrackId = null;
         _selectedGenreNames.Clear();
         _txtGenreSearch.Clear();
         ApplyGenreFilter(string.Empty);
@@ -250,6 +253,20 @@ public partial class AdminForm : Form, IAdminView
         _txtAudioFilePath.Clear();
         _numDuration.Value = 180;
         _importedGenreName = null;
+    }
+
+    public void LoadTrackIntoEditor(TrackDto track)
+    {
+        _editingTrackId = track.Id;
+        _txtTrackTitle.Text = track.Title;
+        _txtAlbum.Text = track.Album;
+        _numDuration.Value = Math.Min(_numDuration.Maximum, Math.Max(_numDuration.Minimum, track.DurationSeconds));
+        _txtAudioFilePath.Clear();
+        _importedGenreName = null;
+
+        SetSelectedArtistsFromText(track.Artist);
+        SetSelectedGenresFromText(track.Genre);
+        SelectCategoryByName(track.Category);
     }
 
     private Control BuildManageLayout()
@@ -335,9 +352,23 @@ public partial class AdminForm : Form, IAdminView
         }, 0, 4);
         top.SetColumnSpan(top.GetControlFromPosition(0, 4)!, 4);
 
-        var btnAddTrack = new Button { Text = "Сохранить трек" };
-        top.Controls.Add(btnAddTrack, 3, 5);
-        btnAddTrack.Anchor = AnchorStyles.Right | AnchorStyles.Top;
+        var buttonPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.RightToLeft,
+            WrapContents = false,
+            AutoSize = true
+        };
+        var btnAddTrack = new Button { Text = "Сохранить трек", AutoSize = true };
+        var btnUpdateTrack = new Button { Text = "Обновить выбранный", AutoSize = true };
+        var btnDeleteTrack = new Button { Text = "Удалить выбранный", AutoSize = true };
+        var btnLoadTrack = new Button { Text = "Заполнить из выбранного", AutoSize = true };
+        buttonPanel.Controls.Add(btnAddTrack);
+        buttonPanel.Controls.Add(btnUpdateTrack);
+        buttonPanel.Controls.Add(btnDeleteTrack);
+        buttonPanel.Controls.Add(btnLoadTrack);
+        top.Controls.Add(buttonPanel, 3, 5);
+        buttonPanel.Anchor = AnchorStyles.Right | AnchorStyles.Top;
 
         var lowerGrid = CreateGrid(_tracksSource);
 
@@ -358,6 +389,21 @@ public partial class AdminForm : Form, IAdminView
                 await _presenter.AddManualTrackAsync();
             }
         };
+        btnUpdateTrack.Click += async (_, _) =>
+        {
+            if (_presenter is not null)
+            {
+                await _presenter.UpdateSelectedTrackAsync();
+            }
+        };
+        btnDeleteTrack.Click += async (_, _) =>
+        {
+            if (_presenter is not null)
+            {
+                await _presenter.DeleteSelectedTrackAsync();
+            }
+        };
+        btnLoadTrack.Click += (_, _) => _presenter?.LoadSelectedTrackIntoEditor();
 
         return root;
     }
@@ -682,6 +728,25 @@ public partial class AdminForm : Form, IAdminView
         }
     }
 
+    private void TryCheckGenreByName(string? genreName)
+    {
+        if (string.IsNullOrWhiteSpace(genreName))
+        {
+            return;
+        }
+
+        for (var i = 0; i < _clbGenres.Items.Count; i++)
+        {
+            if (_clbGenres.Items[i] is GenreDto genre &&
+                string.Equals(genre.Name, genreName, StringComparison.OrdinalIgnoreCase))
+            {
+                _clbGenres.SetItemChecked(i, true);
+                _selectedGenreNames.Add(genreName);
+                break;
+            }
+        }
+    }
+
     private void ApplyGenreLookupFilter(string filterText)
     {
         var filtered = string.IsNullOrWhiteSpace(filterText)
@@ -802,6 +867,64 @@ public partial class AdminForm : Form, IAdminView
         }
 
         listBox.EndUpdate();
+    }
+
+    private void SetSelectedArtistsFromText(string artistText)
+    {
+        _selectedArtistNames.Clear();
+        _txtArtistSearch.Clear();
+        ApplyArtistFilter(string.Empty);
+
+        foreach (var artistName in SplitNames(artistText))
+        {
+            _selectedArtistNames.Add(artistName);
+            TryCheckArtistByName(artistName);
+        }
+    }
+
+    private void SetSelectedGenresFromText(string genreText)
+    {
+        _selectedGenreNames.Clear();
+        _txtGenreSearch.Clear();
+        ApplyGenreFilter(string.Empty);
+
+        foreach (var genreName in SplitNames(genreText))
+        {
+            _selectedGenreNames.Add(genreName);
+            TryCheckGenreByName(genreName);
+        }
+    }
+
+    private void SelectCategoryByName(string? categoryName)
+    {
+        if (string.IsNullOrWhiteSpace(categoryName))
+        {
+            _cmbCategory.SelectedIndex = -1;
+            _cmbCategory.Text = string.Empty;
+            return;
+        }
+
+        for (var i = 0; i < _cmbCategory.Items.Count; i++)
+        {
+            if (_cmbCategory.Items[i] is CategoryDto category &&
+                string.Equals(category.Name, categoryName, StringComparison.OrdinalIgnoreCase))
+            {
+                _cmbCategory.SelectedIndex = i;
+                return;
+            }
+        }
+
+        _cmbCategory.Text = categoryName;
+    }
+
+    private static IEnumerable<string> SplitNames(string? rawValue)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return [];
+        }
+
+        return rawValue.Split([',', ';', '|', '/'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 
     private static bool IsInDesigner()

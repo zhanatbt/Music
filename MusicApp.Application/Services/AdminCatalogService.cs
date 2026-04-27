@@ -249,6 +249,7 @@ public class AdminCatalogService
             primaryArtist.Id,
             album?.Id,
             request.DeezerId,
+            null,
             cancellationToken);
 
         if (duplicateTrack is not null)
@@ -286,6 +287,100 @@ public class AdminCatalogService
 
         await _trackRepository.AddAsync(track, cancellationToken);
         return OperationResult.Ok("Трек добавлен.");
+    }
+
+    public async Task<OperationResult> UpdateTrackAsync(int trackId, TrackCreateDto request, CancellationToken cancellationToken = default)
+    {
+        var track = await _trackRepository.GetByIdAsync(trackId, cancellationToken);
+        if (track is null)
+        {
+            return OperationResult.Fail("Трек не найден.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Title))
+        {
+            return OperationResult.Fail("Для трека нужно название.");
+        }
+
+        var artistNames = GetDistinctNames(request.ArtistNames, request.ArtistName);
+        if (!artistNames.Any())
+        {
+            return OperationResult.Fail("Для трека нужен хотя бы один исполнитель.");
+        }
+
+        var artists = await ResolveArtistsAsync(artistNames, cancellationToken);
+        if (!artists.Any())
+        {
+            return OperationResult.Fail("Для трека нужен хотя бы один исполнитель.");
+        }
+
+        var genres = await ResolveGenresAsync(request, cancellationToken);
+        if (!genres.Any())
+        {
+            return OperationResult.Fail("Выберите хотя бы один жанр.");
+        }
+
+        var category = await ResolveCategoryAsync(request, cancellationToken);
+        if (category is null && request.CategoryId.HasValue)
+        {
+            return OperationResult.Fail("Выбранная категория не найдена.");
+        }
+
+        var primaryArtist = artists[0];
+        Album? album = null;
+        if (!string.IsNullOrWhiteSpace(request.AlbumTitle))
+        {
+            var normalizedAlbumTitle = request.AlbumTitle.Trim();
+            album = await _albumRepository.GetByTitleAndArtistAsync(normalizedAlbumTitle, primaryArtist.Id, cancellationToken);
+            if (album is null)
+            {
+                album = new Album { Title = normalizedAlbumTitle, ArtistId = primaryArtist.Id };
+                await _albumRepository.AddAsync(album, cancellationToken);
+            }
+        }
+
+        var duplicateTrack = await _trackRepository.FindDuplicateAsync(
+            request.Title,
+            primaryArtist.Id,
+            album?.Id,
+            request.DeezerId ?? track.DeezerId,
+            track.Id,
+            cancellationToken);
+
+        if (duplicateTrack is not null)
+        {
+            return OperationResult.Fail("Такой трек уже есть в каталоге.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.AudioFilePath))
+        {
+            track.PreviewUrl = await _fileStorageService.SaveAsync(request.AudioFilePath, cancellationToken);
+            track.SourceType = "LocalFile";
+        }
+
+        track.Title = request.Title.Trim();
+        track.AlbumId = album?.Id;
+        track.Album = album;
+        track.CategoryId = category?.Id;
+        track.Category = category;
+        track.DurationSeconds = request.DurationSeconds;
+        SyncTrackArtists(track, artists);
+        SyncTrackGenres(track, genres);
+
+        await _trackRepository.UpdateAsync(track, cancellationToken);
+        return OperationResult.Ok("Трек обновлен.");
+    }
+
+    public async Task<OperationResult> DeleteTrackAsync(int trackId, CancellationToken cancellationToken = default)
+    {
+        var track = await _trackRepository.GetByIdAsync(trackId, cancellationToken);
+        if (track is null)
+        {
+            return OperationResult.Fail("Трек не найден.");
+        }
+
+        await _trackRepository.DeleteAsync(track, cancellationToken);
+        return OperationResult.Ok("Трек удален.");
     }
 
     public Task<IReadOnlyList<DeezerTrackDto>> SearchDeezerAsync(string query, CancellationToken cancellationToken = default)
@@ -370,6 +465,38 @@ public class AdminCatalogService
             .GroupBy(g => g.Id)
             .Select(g => g.First())
             .ToList();
+    }
+
+    private static void SyncTrackArtists(Track track, IReadOnlyCollection<Artist> artists)
+    {
+        var targetIds = artists.Select(x => x.Id).ToHashSet();
+        var toRemove = track.TrackArtists.Where(x => !targetIds.Contains(x.ArtistId)).ToList();
+        foreach (var item in toRemove)
+        {
+            track.TrackArtists.Remove(item);
+        }
+
+        var existingIds = track.TrackArtists.Select(x => x.ArtistId).ToHashSet();
+        foreach (var artist in artists.Where(x => !existingIds.Contains(x.Id)))
+        {
+            track.TrackArtists.Add(new TrackArtist { TrackId = track.Id, ArtistId = artist.Id });
+        }
+    }
+
+    private static void SyncTrackGenres(Track track, IReadOnlyCollection<Genre> genres)
+    {
+        var targetIds = genres.Select(x => x.Id).ToHashSet();
+        var toRemove = track.TrackGenres.Where(x => !targetIds.Contains(x.GenreId)).ToList();
+        foreach (var item in toRemove)
+        {
+            track.TrackGenres.Remove(item);
+        }
+
+        var existingIds = track.TrackGenres.Select(x => x.GenreId).ToHashSet();
+        foreach (var genre in genres.Where(x => !existingIds.Contains(x.Id)))
+        {
+            track.TrackGenres.Add(new TrackGenre { TrackId = track.Id, GenreId = genre.Id });
+        }
     }
 
     private static List<string> GetDistinctNames(IEnumerable<string>? values, string? fallbackValue)

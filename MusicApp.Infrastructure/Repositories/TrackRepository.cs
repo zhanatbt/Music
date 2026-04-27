@@ -32,12 +32,18 @@ public class TrackRepository : ITrackRepository
         int artistId,
         int? albumId,
         string? deezerId,
+        int? excludeTrackId = null,
         CancellationToken cancellationToken = default)
     {
         var normalizedTitle = title.Trim();
         var normalizedDeezerId = string.IsNullOrWhiteSpace(deezerId) ? null : deezerId.Trim();
 
         var query = IncludeGraph(_context.Tracks).AsQueryable();
+
+        if (excludeTrackId.HasValue)
+        {
+            query = query.Where(t => t.Id != excludeTrackId.Value);
+        }
 
         if (!string.IsNullOrWhiteSpace(normalizedDeezerId))
         {
@@ -124,6 +130,17 @@ public class TrackRepository : ITrackRepository
     public async Task AddAsync(Track track, CancellationToken cancellationToken = default)
     {
         _context.Tracks.Add(track);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateAsync(Track track, CancellationToken cancellationToken = default)
+    {
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task DeleteAsync(Track track, CancellationToken cancellationToken = default)
+    {
+        _context.Tracks.Remove(track);
         await _context.SaveChangesAsync(cancellationToken);
     }
 

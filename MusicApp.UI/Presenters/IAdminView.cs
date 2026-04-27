@@ -24,6 +24,7 @@ public interface IAdminView
     string NewArtistName { get; }
     int? SelectedGenreLookupId { get; }
     int? SelectedArtistLookupId { get; }
+    int? EditingTrackId { get; }
     string DeezerQuery { get; }
     string? ImportedAudioFilePath { get; }
     string? ImportedGenreName { get; }
@@ -42,6 +43,7 @@ public interface IAdminView
     void SetTracks(IReadOnlyList<TrackDto> tracks);
     void SetUsers(IReadOnlyList<UserSessionDto> users);
     void SetDeezerResults(IReadOnlyList<DeezerTrackDto> tracks);
+    void LoadTrackIntoEditor(TrackDto track);
     void ClearNewGenreInput();
     void ClearNewArtistInput();
     void PlayPreview(string previewUrl, string trackTitle);

@@ -133,6 +133,67 @@ public class AdminPresenter
         }
     }
 
+    public void LoadSelectedTrackIntoEditor()
+    {
+        if (_view.SelectedTrack is null)
+        {
+            _view.ShowMessage("Выберите трек в таблице каталога.", "Ошибка");
+            return;
+        }
+
+        _view.LoadTrackIntoEditor(_view.SelectedTrack);
+    }
+
+    public async Task UpdateSelectedTrackAsync()
+    {
+        if (!_view.EditingTrackId.HasValue)
+        {
+            _view.ShowMessage("Сначала загрузите трек в редактор кнопкой заполнения.", "Ошибка");
+            return;
+        }
+
+        var request = new TrackCreateDto
+        {
+            Title = _view.TrackTitle,
+            ArtistName = _view.ArtistName,
+            ArtistNames = _view.SelectedArtistNames,
+            AlbumTitle = _view.AlbumTitle,
+            DurationSeconds = _view.DurationSeconds,
+            GenreId = _view.SelectedGenreId ?? 0,
+            GenreName = _view.GenreName,
+            GenreNames = _view.SelectedGenreNames,
+            CategoryId = _view.SelectedCategoryId,
+            CategoryName = _view.CategoryName,
+            AudioFilePath = _view.ImportedAudioFilePath,
+            SourceType = !string.IsNullOrWhiteSpace(_view.ImportedAudioFilePath) ? "LocalFile" : "Manual"
+        };
+
+        var result = await _catalogService.UpdateTrackAsync(_view.EditingTrackId.Value, request);
+        _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
+        if (result.Success)
+        {
+            _view.ClearEntryFields();
+            await ReloadAsync();
+        }
+    }
+
+    public async Task DeleteSelectedTrackAsync()
+    {
+        if (_view.SelectedTrack is null)
+        {
+            _view.ShowMessage("Выберите трек в таблице каталога.", "Ошибка");
+            return;
+        }
+
+        var result = await _catalogService.DeleteTrackAsync(_view.SelectedTrack.Id);
+        _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
+        if (result.Success)
+        {
+            _view.ClearEntryFields();
+            await ReloadAsync();
+        }
+    }
+
     public async Task SearchDeezerAsync()
     {
         var tracks = await _catalogService.SearchDeezerAsync(_view.DeezerQuery);

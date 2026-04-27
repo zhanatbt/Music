@@ -15,6 +15,8 @@ public interface ITrackRepository
         CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Track>> GetAllAsync(CancellationToken cancellationToken = default);
     Task<Track?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
-    Task<Track?> FindDuplicateAsync(string title, int artistId, int? albumId, string? deezerId, CancellationToken cancellationToken = default);
+    Task<Track?> FindDuplicateAsync(string title, int artistId, int? albumId, string? deezerId, int? excludeTrackId = null, CancellationToken cancellationToken = default);
     Task AddAsync(Track track, CancellationToken cancellationToken = default);
+    Task UpdateAsync(Track track, CancellationToken cancellationToken = default);
+    Task DeleteAsync(Track track, CancellationToken cancellationToken = default);
 }
