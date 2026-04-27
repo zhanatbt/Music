@@ -1,4 +1,4 @@
-using MusicApp.Application.DTOs;
+﻿using MusicApp.Application.DTOs;
 using MusicApp.Application.Services;
 
 namespace MusicApp.UI.Presenters;
@@ -29,9 +29,63 @@ public class AdminPresenter
         }
     }
 
+    public async Task AddGenreLookupAsync()
+    {
+        var result = await _catalogService.AddGenreAsync(_view.NewGenreName);
+        _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
+        if (result.Success)
+        {
+            _view.ClearNewGenreInput();
+            await ReloadAsync();
+        }
+    }
+
+    public async Task DeleteSelectedGenreLookupAsync()
+    {
+        if (!_view.SelectedGenreLookupId.HasValue)
+        {
+            _view.ShowMessage("Выберите жанр в таблице.", "Ошибка");
+            return;
+        }
+
+        var result = await _catalogService.DeleteGenreAsync(_view.SelectedGenreLookupId.Value);
+        _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
+        if (result.Success)
+        {
+            await ReloadAsync();
+        }
+    }
+
     public async Task AddCategoryAsync()
     {
         var result = await _catalogService.AddCategoryAsync(_view.CategoryName);
+        _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
+        if (result.Success)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    public async Task AddArtistLookupAsync()
+    {
+        var result = await _catalogService.AddArtistAsync(_view.NewArtistName);
+        _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
+        if (result.Success)
+        {
+            _view.ClearNewArtistInput();
+            await ReloadAsync();
+        }
+    }
+
+    public async Task DeleteSelectedArtistLookupAsync()
+    {
+        if (!_view.SelectedArtistLookupId.HasValue)
+        {
+            _view.ShowMessage("Выберите исполнителя в таблице.", "Ошибка");
+            return;
+        }
+
+        var result = await _catalogService.DeleteArtistAsync(_view.SelectedArtistLookupId.Value);
         _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
         if (result.Success)
         {
@@ -58,10 +112,12 @@ public class AdminPresenter
         {
             Title = _view.TrackTitle,
             ArtistName = _view.ArtistName,
+            ArtistNames = _view.SelectedArtistNames,
             AlbumTitle = _view.AlbumTitle,
             DurationSeconds = _view.DurationSeconds,
             GenreId = _view.SelectedGenreId ?? 0,
             GenreName = _view.GenreName,
+            GenreNames = _view.SelectedGenreNames,
             CategoryId = _view.SelectedCategoryId,
             CategoryName = _view.CategoryName,
             AudioFilePath = _view.ImportedAudioFilePath,
@@ -186,10 +242,15 @@ public class AdminPresenter
 
     private async Task ReloadAsync()
     {
-        _view.SetGenres(await _catalogService.GetGenresAsync());
+        var genres = await _catalogService.GetGenresAsync();
+        var artists = await _catalogService.GetArtistsAsync();
+
+        _view.SetGenres(genres);
+        _view.SetArtists(artists);
+        _view.SetGenreLookupItems(genres);
+        _view.SetArtistLookupItems(artists);
         _view.SetCategories(await _catalogService.GetCategoriesAsync());
         _view.SetTracks(await _catalogService.GetTracksAsync());
         _view.SetUsers(await _catalogService.GetUsersAsync());
     }
-}
-
+}

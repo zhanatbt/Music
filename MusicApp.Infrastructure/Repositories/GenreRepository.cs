@@ -34,4 +34,17 @@ public class GenreRepository : IGenreRepository
         _context.Genres.Add(genre);
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<bool> DeleteByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var genre = await _context.Genres.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (genre is null)
+        {
+            return false;
+        }
+
+        _context.Genres.Remove(genre);
+        await _context.SaveChangesAsync(cancellationToken);
+        return true;
+    }
 }

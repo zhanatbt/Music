@@ -101,6 +101,65 @@ public class AdminCatalogService
             .ToList();
     }
 
+    public async Task<IReadOnlyList<ArtistDto>> GetArtistsAsync(CancellationToken cancellationToken = default)
+    {
+        var artists = await _artistRepository.GetAllAsync(cancellationToken);
+        return artists.Select(LookupMapper.ToDto).ToList();
+    }
+
+    public async Task<OperationResult> AddArtistAsync(string name, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return OperationResult.Fail("Имя исполнителя пустое.");
+        }
+
+        var normalized = name.Trim();
+        if (await _artistRepository.GetByNameAsync(normalized, cancellationToken) is not null)
+        {
+            return OperationResult.Fail("Такой исполнитель уже существует.");
+        }
+
+        await _artistRepository.AddAsync(new Artist { Name = normalized }, cancellationToken);
+        return OperationResult.Ok("Исполнитель добавлен.");
+    }
+
+    public async Task<OperationResult> DeleteGenreAsync(int genreId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var deleted = await _genreRepository.DeleteByIdAsync(genreId, cancellationToken);
+            if (!deleted)
+            {
+                return OperationResult.Fail("Жанр не найден.");
+            }
+
+            return OperationResult.Ok("Жанр удален.");
+        }
+        catch
+        {
+            return OperationResult.Fail("Жанр нельзя удалить: он используется в треках.");
+        }
+    }
+
+    public async Task<OperationResult> DeleteArtistAsync(int artistId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var deleted = await _artistRepository.DeleteByIdAsync(artistId, cancellationToken);
+            if (!deleted)
+            {
+                return OperationResult.Fail("Исполнитель не найден.");
+            }
+
+            return OperationResult.Ok("Исполнитель удален.");
+        }
+        catch
+        {
+            return OperationResult.Fail("Исполнителя нельзя удалить: он используется в треках или альбомах.");
+        }
+    }
+
     public async Task<OperationResult> AddGenreAsync(string name, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))

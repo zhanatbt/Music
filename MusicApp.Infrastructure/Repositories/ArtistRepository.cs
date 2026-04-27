@@ -14,6 +14,13 @@ public class ArtistRepository : IArtistRepository
         _context = context;
     }
 
+    public async Task<IReadOnlyList<Artist>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await _context.Artists
+            .OrderBy(x => x.Name)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<Artist?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         return await _context.Artists.FirstOrDefaultAsync(x => x.Name == name, cancellationToken);
@@ -23,5 +30,18 @@ public class ArtistRepository : IArtistRepository
     {
         _context.Artists.Add(artist);
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<bool> DeleteByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var artist = await _context.Artists.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (artist is null)
+        {
+            return false;
+        }
+
+        _context.Artists.Remove(artist);
+        await _context.SaveChangesAsync(cancellationToken);
+        return true;
     }
 }

@@ -30,7 +30,7 @@ public class LoginForm : Form, ILoginView
 
         var title = new Label
         {
-            Text = "РђРІС‚РѕСЂРёР·Р°С†РёСЏ",
+            Text = "Авторизация",
             Dock = DockStyle.Top,
             Height = 40,
             TextAlign = ContentAlignment.MiddleCenter,
@@ -51,24 +51,24 @@ public class LoginForm : Form, ILoginView
             panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
         }
 
-        panel.Controls.Add(new Label { Text = "Р›РѕРіРёРЅ", AutoSize = true }, 0, 0);
+        panel.Controls.Add(new Label { Text = "Логин", AutoSize = true }, 0, 0);
         _txtUsername = new TextBox { Dock = DockStyle.Fill };
         panel.Controls.Add(_txtUsername, 0, 1);
 
-        panel.Controls.Add(new Label { Text = "РџР°СЂРѕР»СЊ", AutoSize = true }, 0, 2);
+        panel.Controls.Add(new Label { Text = "Пароль", AutoSize = true }, 0, 2);
         _txtPassword = new TextBox { Dock = DockStyle.Fill, UseSystemPasswordChar = true };
         panel.Controls.Add(_txtPassword, 0, 3);
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight };
-        _btnLogin = new Button { Text = "Р’РѕР№С‚Рё", Width = 120 };
-        _btnRegister = new Button { Text = "Р РµРіРёСЃС‚СЂР°С†РёСЏ", Width = 120 };
+        _btnLogin = new Button { Text = "Войти", Width = 120 };
+        _btnRegister = new Button { Text = "Регистрация", Width = 120 };
         buttons.Controls.Add(_btnLogin);
         buttons.Controls.Add(_btnRegister);
         panel.Controls.Add(buttons, 0, 4);
 
         var hint = new Label
         {
-            Text = "РўРµСЃС‚РѕРІС‹Рµ СѓС‡С‘С‚РЅС‹Рµ Р·Р°РїРёСЃРё: admin/admin123, user/user123",
+            Text = "Тестовые учётные записи: admin/admin123, user/user123",
             AutoSize = true
         };
         panel.Controls.Add(hint, 0, 5);
