@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using MusicApp.Application.Interfaces;
 using MusicApp.Domain.Common;
 using MusicApp.Domain.Entities;
@@ -49,7 +49,7 @@ public static class DatabaseInitializer
         {
             var genres = seedData.Genres.Count > 0
                 ? seedData.Genres
-                : ["Pop", "Rock", "Hip-Hop", "Electronic"];
+                : ["Поп", "Рок", "Хип-хоп", "Джаз"];
 
             foreach (var genreName in genres)
             {
@@ -62,7 +62,7 @@ public static class DatabaseInitializer
         {
             var categories = seedData.Categories.Count > 0
                 ? seedData.Categories
-                : ["Top Hits", "Chill", "Workout"];
+                : ["Топ 100", "Отдых", "Работа"];
 
             foreach (var categoryName in categories)
             {
