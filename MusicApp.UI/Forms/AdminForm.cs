@@ -299,41 +299,52 @@ public partial class AdminForm : Form, IAdminView
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(12),
-            ColumnCount = 4,
-            RowCount = 9
+            ColumnCount = 1,
+            RowCount = 4
         };
-        top.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        top.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        top.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        top.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         top.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         top.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         top.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         top.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        top.Controls.Add(new Label { Text = "Аудиофайл" }, 0, 0);
-        _txtAudioFilePath = new TextBox { ReadOnly = true };
-        top.Controls.Add(_txtAudioFilePath, 1, 0);
-        var btnPickAudio = new Button { Text = "Выбрать mp3" };
-        top.Controls.Add(btnPickAudio, 2, 0);
+        var fieldsLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            ColumnCount = 4,
+            RowCount = 3,
+            AutoSize = true
+        };
+        fieldsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        fieldsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        fieldsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        fieldsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        fieldsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        fieldsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        fieldsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        top.Controls.Add(new Label { Text = "Трек" }, 0, 1);
-        _txtTrackTitle = new TextBox();
-        top.Controls.Add(_txtTrackTitle, 1, 1);
+        fieldsLayout.Controls.Add(new Label { Text = "Аудиофайл", Anchor = AnchorStyles.Left, AutoSize = true }, 0, 0);
+        _txtAudioFilePath = new TextBox { ReadOnly = true, Dock = DockStyle.Fill, MinimumSize = new Size(260, 0) };
+        fieldsLayout.Controls.Add(_txtAudioFilePath, 1, 0);
+        fieldsLayout.SetColumnSpan(_txtAudioFilePath, 2);
+        var btnPickAudio = new Button { Text = "Выбрать", AutoSize = true, Anchor = AnchorStyles.Left };
+        fieldsLayout.Controls.Add(btnPickAudio, 3, 0);
 
-        top.Controls.Add(new Label { Text = "Альбом" }, 2, 1);
-        _txtAlbum = new TextBox();
-        top.Controls.Add(_txtAlbum, 3, 1);
+        fieldsLayout.Controls.Add(new Label { Text = "Трек", Anchor = AnchorStyles.Left, AutoSize = true }, 0, 1);
+        _txtTrackTitle = new TextBox { Dock = DockStyle.Fill, MinimumSize = new Size(220, 0) };
+        fieldsLayout.Controls.Add(_txtTrackTitle, 1, 1);
 
-        top.Controls.Add(new Label { Text = "Категория" }, 0, 2);
-        _cmbCategory = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
-        top.Controls.Add(_cmbCategory, 1, 2);
+        fieldsLayout.Controls.Add(new Label { Text = "Альбом", Anchor = AnchorStyles.Left, AutoSize = true }, 2, 1);
+        _txtAlbum = new TextBox { Dock = DockStyle.Fill, MinimumSize = new Size(220, 0) };
+        fieldsLayout.Controls.Add(_txtAlbum, 3, 1);
 
-        top.Controls.Add(new Label { Text = "Длительность, сек" }, 2, 2);
-        _numDuration = new NumericUpDown { Maximum = 10000, Minimum = 0, Value = 180 };
-        top.Controls.Add(_numDuration, 3, 2);
+        fieldsLayout.Controls.Add(new Label { Text = "Категория", Anchor = AnchorStyles.Left, AutoSize = true }, 0, 2);
+        _cmbCategory = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill, MinimumSize = new Size(220, 0) };
+        fieldsLayout.Controls.Add(_cmbCategory, 1, 2);
+
+        fieldsLayout.Controls.Add(new Label { Text = "Длительность, сек", Anchor = AnchorStyles.Left, AutoSize = true }, 2, 2);
+        _numDuration = new NumericUpDown { Maximum = 10000, Minimum = 0, Value = 180, Dock = DockStyle.Fill, MinimumSize = new Size(220, 0) };
+        fieldsLayout.Controls.Add(_numDuration, 3, 2);
+        top.Controls.Add(fieldsLayout, 0, 0);
 
         var selectionLayout = new TableLayoutPanel
         {
@@ -364,15 +375,13 @@ public partial class AdminForm : Form, IAdminView
 
         selectionLayout.Controls.Add(artistPanel, 0, 0);
         selectionLayout.Controls.Add(genrePanel, 1, 0);
-        top.SetColumnSpan(selectionLayout, 4);
-        top.Controls.Add(selectionLayout, 0, 3);
+        top.Controls.Add(selectionLayout, 0, 1);
 
         top.Controls.Add(new Label
         {
             Text = "Если у mp3 есть теги, поля заполнятся автоматически. Жанр и категория будут выбраны или созданы при сохранении.",
             AutoSize = true
-        }, 0, 4);
-        top.SetColumnSpan(top.GetControlFromPosition(0, 4)!, 4);
+        }, 0, 2);
 
         var buttonPanel = new FlowLayoutPanel
         {
@@ -389,7 +398,7 @@ public partial class AdminForm : Form, IAdminView
         buttonPanel.Controls.Add(btnUpdateTrack);
         buttonPanel.Controls.Add(btnDeleteTrack);
         buttonPanel.Controls.Add(btnLoadTrack);
-        top.Controls.Add(buttonPanel, 3, 5);
+        top.Controls.Add(buttonPanel, 0, 3);
         buttonPanel.Anchor = AnchorStyles.Right | AnchorStyles.Top;
 
         var lowerGrid = CreateGrid(_tracksSource);
