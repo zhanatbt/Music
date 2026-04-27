@@ -277,6 +277,16 @@ public class AdminForm : Form, IAdminView
             ColumnCount = 4,
             RowCount = 9
         };
+        top.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        top.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        top.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        top.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        top.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        top.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        top.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        top.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         top.Controls.Add(new Label { Text = "Аудиофайл" }, 0, 0);
         _txtAudioFilePath = new TextBox { ReadOnly = true };
@@ -304,7 +314,9 @@ public class AdminForm : Form, IAdminView
         {
             Dock = DockStyle.Fill,
             ColumnCount = 2,
-            RowCount = 1
+            RowCount = 1,
+            MinimumSize = new Size(0, 170),
+            Margin = new Padding(0, 8, 0, 8)
         };
         selectionLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         selectionLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
@@ -339,6 +351,7 @@ public class AdminForm : Form, IAdminView
 
         var btnAddTrack = new Button { Text = "Сохранить трек" };
         top.Controls.Add(btnAddTrack, 3, 5);
+        btnAddTrack.Anchor = AnchorStyles.Right | AnchorStyles.Top;
 
         var lowerGrid = CreateGrid(_tracksSource);
 
@@ -668,7 +681,8 @@ public class AdminForm : Form, IAdminView
         {
             Dock = DockStyle.Fill,
             CheckOnClick = true,
-            IntegralHeight = false
+            IntegralHeight = false,
+            MinimumSize = new Size(0, 120)
         };
 
         searchBox.TextChanged += (_, _) => applyFilter(searchBox.Text);
