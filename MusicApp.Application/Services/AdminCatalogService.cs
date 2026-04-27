@@ -1,4 +1,4 @@
-using MusicApp.Application.Common;
+﻿using MusicApp.Application.Common;
 using MusicApp.Application.DTOs;
 using MusicApp.Application.Interfaces;
 using MusicApp.Application.Mappers;
@@ -237,10 +237,6 @@ public class AdminCatalogService
         }
 
         var genres = await ResolveGenresAsync(request, cancellationToken);
-        if (!genres.Any())
-        {
-            return OperationResult.Fail("Выберите жанр или импортируйте тег жанра из mp3.");
-        }
 
         var category = await ResolveCategoryAsync(request, cancellationToken);
         if (category is null && request.CategoryId.HasValue)
@@ -333,10 +329,6 @@ public class AdminCatalogService
         }
 
         var genres = await ResolveGenresAsync(request, cancellationToken);
-        if (!genres.Any())
-        {
-            return OperationResult.Fail("Выберите хотя бы один жанр.");
-        }
 
         var category = await ResolveCategoryAsync(request, cancellationToken);
         if (category is null && request.CategoryId.HasValue)
