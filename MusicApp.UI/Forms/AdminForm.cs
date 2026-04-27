@@ -2,12 +2,13 @@
 using MusicApp.Application.DTOs;
 using MusicApp.Application.Services;
 using MusicApp.UI.Presenters;
+using System.ComponentModel;
 
 namespace MusicApp.UI.Forms;
 
-public class AdminForm : Form, IAdminView
+public partial class AdminForm : Form, IAdminView
 {
-    private readonly AdminPresenter _presenter;
+    private AdminPresenter? _presenter;
     private readonly BindingSource _categoriesSource = new();
     private readonly BindingSource _tracksSource = new();
     private readonly BindingSource _usersSource = new();
@@ -48,46 +49,31 @@ public class AdminForm : Form, IAdminView
     private List<ArtistDto> _allArtists = [];
     private string? _importedGenreName;
 
+    public AdminForm()
+    {
+        InitializeComponent();
+
+        if (IsInDesigner())
+        {
+            Text = "Music App - Admin Panel";
+        }
+    }
+
     public AdminForm(AdminCatalogService catalogService, UserSessionDto session)
+        : this()
     {
         _presenter = new AdminPresenter(this, catalogService);
 
         Text = $"Music App - Admin Panel ({session.Username})";
-        Width = 1240;
-        Height = 820;
         StartPosition = FormStartPosition.CenterParent;
 
-        var tabControl = new TabControl { Dock = DockStyle.Fill };
-
-        var manageTab = new TabPage("Управление каталогом");
-        manageTab.Controls.Add(BuildManageLayout());
-
-        var tracksTab = new TabPage("Треки");
-        tracksTab.Controls.Add(BuildTracksLayout());
-
-        var usersTab = new TabPage("Пользователи");
-        usersTab.Controls.Add(CreateGrid(_usersSource));
-
-        var genresTab = new TabPage("Genres");
-        genresTab.Controls.Add(BuildGenreCatalogLayout());
-
-        var artistsTab = new TabPage("Artists");
-        artistsTab.Controls.Add(BuildArtistCatalogLayout());
-
-        var deezerTab = new TabPage("Импорт Deezer");
-        deezerTab.Controls.Add(BuildDeezerLayout());
-
-        tabControl.TabPages.Add(manageTab);
-        tabControl.TabPages.Add(tracksTab);
-        tabControl.TabPages.Add(usersTab);
-        tabControl.TabPages.Add(genresTab);
-        tabControl.TabPages.Add(artistsTab);
-        tabControl.TabPages.Add(deezerTab);
-
-        Controls.Add(tabControl);
-        Controls.Add(BuildPlayerPanel());
-
-        Load += async (_, _) => await _presenter.LoadAsync();
+        Load += async (_, _) =>
+        {
+            if (_presenter is not null)
+            {
+                await _presenter.LoadAsync();
+            }
+        };
     }
 
     public string GenreName => SelectedGenreNames.FirstOrDefault() ?? _importedGenreName ?? string.Empty;
@@ -358,8 +344,20 @@ public class AdminForm : Form, IAdminView
         root.Panel1.Controls.Add(top);
         root.Panel2.Controls.Add(lowerGrid);
 
-        btnPickAudio.Click += async (_, _) => await _presenter.ImportAudioFileAsync();
-        btnAddTrack.Click += async (_, _) => await _presenter.AddManualTrackAsync();
+        btnPickAudio.Click += async (_, _) =>
+        {
+            if (_presenter is not null)
+            {
+                await _presenter.ImportAudioFileAsync();
+            }
+        };
+        btnAddTrack.Click += async (_, _) =>
+        {
+            if (_presenter is not null)
+            {
+                await _presenter.AddManualTrackAsync();
+            }
+        };
 
         return root;
     }
@@ -389,8 +387,20 @@ public class AdminForm : Form, IAdminView
             DataSource = _genreLookupSource
         };
 
-        btnAdd.Click += async (_, _) => await _presenter.AddGenreLookupAsync();
-        btnDelete.Click += async (_, _) => await _presenter.DeleteSelectedGenreLookupAsync();
+        btnAdd.Click += async (_, _) =>
+        {
+            if (_presenter is not null)
+            {
+                await _presenter.AddGenreLookupAsync();
+            }
+        };
+        btnDelete.Click += async (_, _) =>
+        {
+            if (_presenter is not null)
+            {
+                await _presenter.DeleteSelectedGenreLookupAsync();
+            }
+        };
 
         panel.Controls.Add(_txtGenreLookupSearch);
         panel.Controls.Add(_txtNewGenreName);
@@ -427,8 +437,20 @@ public class AdminForm : Form, IAdminView
             DataSource = _artistLookupSource
         };
 
-        btnAdd.Click += async (_, _) => await _presenter.AddArtistLookupAsync();
-        btnDelete.Click += async (_, _) => await _presenter.DeleteSelectedArtistLookupAsync();
+        btnAdd.Click += async (_, _) =>
+        {
+            if (_presenter is not null)
+            {
+                await _presenter.AddArtistLookupAsync();
+            }
+        };
+        btnDelete.Click += async (_, _) =>
+        {
+            if (_presenter is not null)
+            {
+                await _presenter.DeleteSelectedArtistLookupAsync();
+            }
+        };
 
         panel.Controls.Add(_txtArtistLookupSearch);
         panel.Controls.Add(_txtNewArtistName);
@@ -471,16 +493,31 @@ public class AdminForm : Form, IAdminView
         panel.Controls.Add(_gridTracks);
         panel.Controls.Add(searchPanel);
 
-        btnSearch.Click += async (_, _) => await _presenter.SearchTracksAsync();
+        btnSearch.Click += async (_, _) =>
+        {
+            if (_presenter is not null)
+            {
+                await _presenter.SearchTracksAsync();
+            }
+        };
         btnReset.Click += async (_, _) =>
         {
             _txtTrackSearchTitle.Clear();
             _txtTrackSearchArtist.Clear();
             _txtTrackSearchAlbum.Clear();
             _txtTrackSearchGenre.Clear();
-            await _presenter.SearchTracksAsync();
+            if (_presenter is not null)
+            {
+                await _presenter.SearchTracksAsync();
+            }
         };
-        btnPlaySelected.Click += async (_, _) => await _presenter.PlaySelectedTrackAsync();
+        btnPlaySelected.Click += async (_, _) =>
+        {
+            if (_presenter is not null)
+            {
+                await _presenter.PlaySelectedTrackAsync();
+            }
+        };
         return panel;
     }
 
@@ -527,9 +564,27 @@ public class AdminForm : Form, IAdminView
         panel.Controls.Add(btnClearSelection);
         panel.Controls.Add(_gridDeezer);
 
-        btnSearch.Click += async (_, _) => await _presenter.SearchDeezerAsync();
-        btnImport.Click += async (_, _) => await _presenter.ImportDeezerTracksAsync();
-        btnPlayPreview.Click += async (_, _) => await _presenter.PlaySelectedDeezerTrackAsync();
+        btnSearch.Click += async (_, _) =>
+        {
+            if (_presenter is not null)
+            {
+                await _presenter.SearchDeezerAsync();
+            }
+        };
+        btnImport.Click += async (_, _) =>
+        {
+            if (_presenter is not null)
+            {
+                await _presenter.ImportDeezerTracksAsync();
+            }
+        };
+        btnPlayPreview.Click += async (_, _) =>
+        {
+            if (_presenter is not null)
+            {
+                await _presenter.PlaySelectedDeezerTrackAsync();
+            }
+        };
         btnSelectAll.Click += (_, _) => SetAllDeezerSelection(true);
         btnClearSelection.Click += (_, _) => SetAllDeezerSelection(false);
 
@@ -747,6 +802,11 @@ public class AdminForm : Form, IAdminView
         }
 
         listBox.EndUpdate();
+    }
+
+    private static bool IsInDesigner()
+    {
+        return LicenseManager.UsageMode == LicenseUsageMode.Designtime;
     }
 
 }

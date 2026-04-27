@@ -35,4 +35,15 @@
     </COMReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Update="Forms\AdminForm.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>AdminForm.cs</DependentUpon>
+    </Compile>
+    <EmbeddedResource Update="Forms\AdminForm.resx">
+      <DependentUpon>AdminForm.cs</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>
