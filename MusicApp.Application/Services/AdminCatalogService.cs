@@ -194,6 +194,24 @@ public class AdminCatalogService
         return OperationResult.Ok("Категория добавлена.");
     }
 
+    public async Task<OperationResult> DeleteCategoryAsync(int categoryId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var deleted = await _categoryRepository.DeleteByIdAsync(categoryId, cancellationToken);
+            if (!deleted)
+            {
+                return OperationResult.Fail("Категория не найдена.");
+            }
+
+            return OperationResult.Ok("Категория удалена.");
+        }
+        catch
+        {
+            return OperationResult.Fail("Категорию нельзя удалить: она используется в треках.");
+        }
+    }
+
     public async Task<AudioMetadataDto> ReadAudioMetadataAsync(string filePath, CancellationToken cancellationToken = default)
     {
         return await _audioMetadataReader.ReadAsync(filePath, cancellationToken);

@@ -13,6 +13,7 @@ public partial class AdminForm : Form, IAdminView
     private readonly BindingSource _tracksSource = new();
     private readonly BindingSource _usersSource = new();
     private readonly BindingSource _deezerSource = new();
+    private readonly BindingSource _categoryLookupSource = new();
     private readonly BindingSource _genreLookupSource = new();
     private readonly BindingSource _artistLookupSource = new();
     private readonly HashSet<string> _selectedGenreNames = new(StringComparer.OrdinalIgnoreCase);
@@ -31,18 +32,22 @@ public partial class AdminForm : Form, IAdminView
     private TextBox _txtTrackSearchArtist = null!;
     private TextBox _txtTrackSearchAlbum = null!;
     private TextBox _txtTrackSearchGenre = null!;
+    private TextBox _txtCategoryLookupSearch = null!;
     private TextBox _txtGenreLookupSearch = null!;
     private TextBox _txtArtistLookupSearch = null!;
+    private TextBox _txtNewCategoryName = null!;
     private TextBox _txtNewGenreName = null!;
     private TextBox _txtNewArtistName = null!;
     private TextBox _txtDeezerQuery = null!;
     private DataGridView _gridDeezer = null!;
     private DataGridView _gridTracks = null!;
+    private DataGridView _gridCategoryLookup = null!;
     private DataGridView _gridGenreLookup = null!;
     private DataGridView _gridArtistLookup = null!;
     private Label _lblNowPlaying = null!;
     private AxWindowsMediaPlayer _player = null!;
     private readonly List<DeezerTrackDto> _deezerResults = new();
+    private List<CategoryDto> _categoryLookupAll = [];
     private List<GenreDto> _genreLookupAll = [];
     private List<ArtistDto> _artistLookupAll = [];
     private List<GenreDto> _allGenres = [];
@@ -97,10 +102,13 @@ public partial class AdminForm : Form, IAdminView
     public string TrackSearchArtist => _txtTrackSearchArtist.Text;
     public string TrackSearchAlbum => _txtTrackSearchAlbum.Text;
     public string TrackSearchGenre => _txtTrackSearchGenre.Text;
+    public string CategoryLookupSearch => _txtCategoryLookupSearch?.Text ?? string.Empty;
     public string GenreLookupSearch => _txtGenreLookupSearch?.Text ?? string.Empty;
     public string ArtistLookupSearch => _txtArtistLookupSearch?.Text ?? string.Empty;
+    public string NewCategoryName => _txtNewCategoryName?.Text ?? string.Empty;
     public string NewGenreName => _txtNewGenreName?.Text ?? string.Empty;
     public string NewArtistName => _txtNewArtistName?.Text ?? string.Empty;
+    public int? SelectedCategoryLookupId => _gridCategoryLookup?.CurrentRow?.DataBoundItem is CategoryDto category ? category.Id : null;
     public int? SelectedGenreLookupId => _gridGenreLookup?.CurrentRow?.DataBoundItem is GenreDto genre ? genre.Id : null;
     public int? SelectedArtistLookupId => _gridArtistLookup?.CurrentRow?.DataBoundItem is ArtistDto artist ? artist.Id : null;
     public int? EditingTrackId => _editingTrackId;
@@ -174,6 +182,12 @@ public partial class AdminForm : Form, IAdminView
         ApplyGenreLookupFilter(_txtGenreLookupSearch?.Text ?? string.Empty);
     }
 
+    public void SetCategoryLookupItems(IReadOnlyList<CategoryDto> categories)
+    {
+        _categoryLookupAll = categories.ToList();
+        ApplyCategoryLookupFilter(_txtCategoryLookupSearch?.Text ?? string.Empty);
+    }
+
     public void SetArtistLookupItems(IReadOnlyList<ArtistDto> artists)
     {
         _artistLookupAll = artists.ToList();
@@ -215,6 +229,14 @@ public partial class AdminForm : Form, IAdminView
         if (_txtNewGenreName is not null)
         {
             _txtNewGenreName.Clear();
+        }
+    }
+
+    public void ClearNewCategoryInput()
+    {
+        if (_txtNewCategoryName is not null)
+        {
+            _txtNewCategoryName.Clear();
         }
     }
 
@@ -453,6 +475,56 @@ public partial class AdminForm : Form, IAdminView
         panel.Controls.Add(btnAdd);
         panel.Controls.Add(btnDelete);
         panel.Controls.Add(_gridGenreLookup);
+
+        return panel;
+    }
+
+    private Control BuildCategoryCatalogLayout()
+    {
+        var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
+
+        _txtCategoryLookupSearch = new TextBox { Left = 12, Top = 12, Width = 360, PlaceholderText = "Search category..." };
+        _txtCategoryLookupSearch.TextChanged += (_, _) => ApplyCategoryLookupFilter(_txtCategoryLookupSearch.Text);
+
+        _txtNewCategoryName = new TextBox { Left = 12, Top = 48, Width = 260, PlaceholderText = "New category" };
+        var btnAdd = new Button { Left = 280, Top = 48, Width = 90, Height = 28, Text = "Add" };
+        var btnDelete = new Button { Left = 380, Top = 48, Width = 120, Height = 28, Text = "Delete selected" };
+
+        _gridCategoryLookup = new DataGridView
+        {
+            Left = 12,
+            Top = 88,
+            Width = 1180,
+            Height = 540,
+            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+            ReadOnly = true,
+            AutoGenerateColumns = true,
+            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+            MultiSelect = false,
+            AllowUserToAddRows = false,
+            DataSource = _categoryLookupSource
+        };
+
+        btnAdd.Click += async (_, _) =>
+        {
+            if (_presenter is not null)
+            {
+                await _presenter.AddCategoryLookupAsync();
+            }
+        };
+        btnDelete.Click += async (_, _) =>
+        {
+            if (_presenter is not null)
+            {
+                await _presenter.DeleteSelectedCategoryLookupAsync();
+            }
+        };
+
+        panel.Controls.Add(_txtCategoryLookupSearch);
+        panel.Controls.Add(_txtNewCategoryName);
+        panel.Controls.Add(btnAdd);
+        panel.Controls.Add(btnDelete);
+        panel.Controls.Add(_gridCategoryLookup);
 
         return panel;
     }
@@ -756,6 +828,17 @@ public partial class AdminForm : Form, IAdminView
                 .ToList();
 
         _genreLookupSource.DataSource = filtered;
+    }
+
+    private void ApplyCategoryLookupFilter(string filterText)
+    {
+        var filtered = string.IsNullOrWhiteSpace(filterText)
+            ? _categoryLookupAll
+            : _categoryLookupAll
+                .Where(x => x.Name.Contains(filterText, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+        _categoryLookupSource.DataSource = filtered;
     }
 
     private void ApplyArtistLookupFilter(string filterText)

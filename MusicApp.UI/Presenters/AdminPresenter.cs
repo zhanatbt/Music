@@ -66,6 +66,33 @@ public class AdminPresenter
         }
     }
 
+    public async Task AddCategoryLookupAsync()
+    {
+        var result = await _catalogService.AddCategoryAsync(_view.NewCategoryName);
+        _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
+        if (result.Success)
+        {
+            _view.ClearNewCategoryInput();
+            await ReloadAsync();
+        }
+    }
+
+    public async Task DeleteSelectedCategoryLookupAsync()
+    {
+        if (!_view.SelectedCategoryLookupId.HasValue)
+        {
+            _view.ShowMessage("Выберите категорию в таблице.", "Ошибка");
+            return;
+        }
+
+        var result = await _catalogService.DeleteCategoryAsync(_view.SelectedCategoryLookupId.Value);
+        _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
+        if (result.Success)
+        {
+            await ReloadAsync();
+        }
+    }
+
     public async Task AddArtistLookupAsync()
     {
         var result = await _catalogService.AddArtistAsync(_view.NewArtistName);
@@ -305,13 +332,15 @@ public class AdminPresenter
     {
         var genres = await _catalogService.GetGenresAsync();
         var artists = await _catalogService.GetArtistsAsync();
+        var categories = await _catalogService.GetCategoriesAsync();
 
         _view.SetGenres(genres);
         _view.SetArtists(artists);
+        _view.SetCategoryLookupItems(categories);
         _view.SetGenreLookupItems(genres);
         _view.SetArtistLookupItems(artists);
-        _view.SetCategories(await _catalogService.GetCategoriesAsync());
+        _view.SetCategories(categories);
         _view.SetTracks(await _catalogService.GetTracksAsync());
         _view.SetUsers(await _catalogService.GetUsersAsync());
     }
-}
+}

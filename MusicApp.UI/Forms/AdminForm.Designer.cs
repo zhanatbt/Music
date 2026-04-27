@@ -1,4 +1,4 @@
-namespace MusicApp.UI.Forms;
+﻿namespace MusicApp.UI.Forms;
 
 partial class AdminForm
 {
@@ -7,6 +7,7 @@ partial class AdminForm
     private TabPage _manageTab = null!;
     private TabPage _tracksTab = null!;
     private TabPage _usersTab = null!;
+    private TabPage _categoriesTab = null!;
     private TabPage _genresTab = null!;
     private TabPage _artistsTab = null!;
     private TabPage _deezerTab = null!;
@@ -29,6 +30,7 @@ partial class AdminForm
         _manageTab = new TabPage();
         _tracksTab = new TabPage();
         _usersTab = new TabPage();
+        _categoriesTab = new TabPage();
         _genresTab = new TabPage();
         _artistsTab = new TabPage();
         _deezerTab = new TabPage();
@@ -57,6 +59,12 @@ partial class AdminForm
         _usersTab.UseVisualStyleBackColor = true;
         _usersTab.Controls.Add(CreateGrid(_usersSource));
 
+        _categoriesTab.Name = "_categoriesTab";
+        _categoriesTab.Padding = new Padding(3);
+        _categoriesTab.Text = "Categories";
+        _categoriesTab.UseVisualStyleBackColor = true;
+        _categoriesTab.Controls.Add(BuildCategoryCatalogLayout());
+
         _genresTab.Name = "_genresTab";
         _genresTab.Padding = new Padding(3);
         _genresTab.Text = "Genres";
@@ -78,6 +86,7 @@ partial class AdminForm
         _tabControl.Controls.Add(_manageTab);
         _tabControl.Controls.Add(_tracksTab);
         _tabControl.Controls.Add(_usersTab);
+        _tabControl.Controls.Add(_categoriesTab);
         _tabControl.Controls.Add(_genresTab);
         _tabControl.Controls.Add(_artistsTab);
         _tabControl.Controls.Add(_deezerTab);
