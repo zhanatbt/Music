@@ -1,4 +1,4 @@
-using MusicApp.Application.DTOs;
+﻿using MusicApp.Application.DTOs;
 using MusicApp.Application.Services;
 
 namespace MusicApp.UI.Presenters;
@@ -96,6 +96,27 @@ public class MainPresenter
             {
                 await ReloadPlaylistsAsync();
                 await ReloadSelectedPlaylistTracksAsync();
+            }
+        });
+    }
+
+    public async Task DeleteSelectedPlaylistAsync()
+    {
+        await ExecuteSerializedAsync(async () =>
+        {
+            if (!_view.SelectedPlaylistId.HasValue)
+            {
+                _view.ShowMessage("Сначала выберите плейлист.", "Ошибка");
+                return;
+            }
+
+            var result = await _musicLibraryService.DeletePlaylistAsync(_view.SelectedPlaylistId.Value);
+            _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
+
+            if (result.Success)
+            {
+                await ReloadPlaylistsAsync();
+                _view.SetPlaylistTracks([]);
             }
         });
     }

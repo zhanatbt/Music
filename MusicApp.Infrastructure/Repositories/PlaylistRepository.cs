@@ -56,6 +56,12 @@ public class PlaylistRepository : IPlaylistRepository
         await _context.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task DeleteAsync(Playlist playlist, CancellationToken cancellationToken = default)
+    {
+        _context.Playlists.Remove(playlist);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task AddTrackAsync(int playlistId, int trackId, CancellationToken cancellationToken = default)
     {
         var exists = await _context.PlaylistTracks

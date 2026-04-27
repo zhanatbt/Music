@@ -1,4 +1,4 @@
-using MusicApp.Application.Common;
+﻿using MusicApp.Application.Common;
 using MusicApp.Application.DTOs;
 using MusicApp.Application.Interfaces;
 using MusicApp.Application.Mappers;
@@ -120,6 +120,23 @@ public class MusicLibraryService
         return OperationResult.Ok("Трек добавлен в плейлист.");
     }
 
+    public async Task<OperationResult> DeletePlaylistAsync(int playlistId, CancellationToken cancellationToken = default)
+    {
+        var playlist = await _playlistRepository.GetByIdAsync(playlistId, cancellationToken);
+        if (playlist is null)
+        {
+            return OperationResult.Fail("Плейлист не найден.");
+        }
+
+        if (playlist.PlaylistTracks.Count > 0)
+        {
+            return OperationResult.Fail("Можно удалить только пустой плейлист.");
+        }
+
+        await _playlistRepository.DeleteAsync(playlist, cancellationToken);
+        return OperationResult.Ok("Плейлист удален.");
+    }
+
     public async Task<OperationResult> RemoveTrackFromPlaylistAsync(int playlistId, int trackId, CancellationToken cancellationToken = default)
     {
         var playlist = await _playlistRepository.GetByIdAsync(playlistId, cancellationToken);
@@ -135,6 +152,6 @@ public class MusicLibraryService
         }
 
         await _playlistRepository.RemoveTrackAsync(playlistId, trackId, cancellationToken);
-        return OperationResult.Ok("Трек удалён из плейлиста.");
+        return OperationResult.Ok("Трек удален из плейлиста.");
     }
 }

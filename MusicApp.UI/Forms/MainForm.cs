@@ -1,4 +1,4 @@
-using AxWMPLib;
+﻿using AxWMPLib;
 using MusicApp.Application.DTOs;
 using MusicApp.Application.Services;
 using MusicApp.UI.Presenters;
@@ -132,11 +132,14 @@ public class MainForm : Form, IMainView
         topPanel.Controls.Add(hintLabel);
         topPanel.Controls.Add(titleLabel);
 
-        var bottomPanel = new Panel { Dock = DockStyle.Bottom, Height = 72 };
+        var bottomPanel = new Panel { Dock = DockStyle.Bottom, Height = 108 };
         _txtNewPlaylist = new TextBox { Dock = DockStyle.Top };
         var btnCreatePlaylist = new Button { Text = "Создать плейлист", Dock = DockStyle.Bottom, Height = 32 };
+        var btnDeletePlaylist = new Button { Text = "Удалить пустой плейлист", Dock = DockStyle.Bottom, Height = 32 };
         btnCreatePlaylist.Click += async (_, _) => await _presenter.CreatePlaylistAsync();
+        btnDeletePlaylist.Click += async (_, _) => await _presenter.DeleteSelectedPlaylistAsync();
         bottomPanel.Controls.Add(_txtNewPlaylist);
+        bottomPanel.Controls.Add(btnDeletePlaylist);
         bottomPanel.Controls.Add(btnCreatePlaylist);
 
         _gridPlaylists = new DataGridView
