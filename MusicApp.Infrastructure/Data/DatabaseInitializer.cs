@@ -29,8 +29,8 @@ public static class DatabaseInitializer
                 ? seedData.Users
                 : new List<SeedUserConfiguration>
                 {
-                    new() { Username = "admin", Password = "admin123", Role = UserRole.Admin },
-                    new() { Username = "user", Password = "user123", Role = UserRole.User }
+                    new() { Username = "admin", Password = "admin123", SecretWord = "admin", Role = UserRole.Admin },
+                    new() { Username = "user", Password = "user123", SecretWord = "user", Role = UserRole.User }
                 };
 
             foreach (var seedUser in users)
@@ -39,8 +39,18 @@ public static class DatabaseInitializer
                 {
                     Username = seedUser.Username,
                     PasswordHash = hasher.Hash(seedUser.Password),
+                    SecretWordHash = hasher.Hash(string.IsNullOrWhiteSpace(seedUser.SecretWord) ? seedUser.Username : seedUser.SecretWord),
                     Role = seedUser.Role
                 }, cancellationToken);
+            }
+        }
+        else
+        {
+            var hasher = new BCryptPasswordHasher();
+            foreach (var existingUser in existingUsers.Where(x => string.IsNullOrWhiteSpace(x.SecretWordHash)))
+            {
+                existingUser.SecretWordHash = hasher.Hash(existingUser.Username);
+                await userRepository.UpdateAsync(existingUser, cancellationToken);
             }
         }
 

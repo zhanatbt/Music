@@ -9,14 +9,15 @@ public class RegisterForm : Form, IRegisterView
     private readonly TextBox _txtUsername;
     private readonly TextBox _txtPassword;
     private readonly TextBox _txtConfirmPassword;
+    private readonly TextBox _txtSecretWord;
 
     public RegisterForm(AuthService authService)
     {
         _presenter = new RegisterPresenter(this, authService);
 
-        Text = "Р РµРіРёСЃС‚СЂР°С†РёСЏ";
-        Width = 400;
-        Height = 300;
+        Text = "Регистрация";
+        Width = 420;
+        Height = 360;
         StartPosition = FormStartPosition.CenterParent;
 
         var layout = new TableLayoutPanel
@@ -24,28 +25,38 @@ public class RegisterForm : Form, IRegisterView
             Dock = DockStyle.Fill,
             Padding = new Padding(20),
             ColumnCount = 1,
-            RowCount = 9
+            RowCount = 11
         };
 
-        layout.Controls.Add(new Label { Text = "Р›РѕРіРёРЅ" }, 0, 0);
+        layout.Controls.Add(new Label { Text = "Логин" }, 0, 0);
         _txtUsername = new TextBox();
         layout.Controls.Add(_txtUsername, 0, 1);
 
-        layout.Controls.Add(new Label { Text = "РџР°СЂРѕР»СЊ" }, 0, 2);
+        layout.Controls.Add(new Label { Text = "Пароль" }, 0, 2);
         _txtPassword = new TextBox { UseSystemPasswordChar = true };
         layout.Controls.Add(_txtPassword, 0, 3);
 
-        layout.Controls.Add(new Label { Text = "РџРѕРґС‚РІРµСЂРґРёС‚Рµ РїР°СЂРѕР»СЊ" }, 0, 4);
+        layout.Controls.Add(new Label { Text = "Подтвердите пароль" }, 0, 4);
         _txtConfirmPassword = new TextBox { UseSystemPasswordChar = true };
         layout.Controls.Add(_txtConfirmPassword, 0, 5);
 
+        layout.Controls.Add(new Label { Text = "Кодовое слово" }, 0, 6);
+        _txtSecretWord = new TextBox();
+        layout.Controls.Add(_txtSecretWord, 0, 7);
+
+        var hint = new Label
+        {
+            Text = "Запомните кодовое слово: оно нужно для восстановления пароля.",
+            AutoSize = true
+        };
+        layout.Controls.Add(hint, 0, 8);
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill };
-        var btnSave = new Button { Text = "РЎРѕР·РґР°С‚СЊ", Width = 120 };
-        var btnCancel = new Button { Text = "РћС‚РјРµРЅР°", Width = 120 };
+        var btnSave = new Button { Text = "Создать", Width = 120 };
+        var btnCancel = new Button { Text = "Отмена", Width = 120 };
         buttons.Controls.Add(btnSave);
         buttons.Controls.Add(btnCancel);
-        layout.Controls.Add(buttons, 0, 7);
+        layout.Controls.Add(buttons, 0, 9);
 
         Controls.Add(layout);
 
@@ -56,6 +67,7 @@ public class RegisterForm : Form, IRegisterView
     public string Username => _txtUsername.Text;
     public string Password => _txtPassword.Text;
     public string ConfirmPassword => _txtConfirmPassword.Text;
+    public string SecretWord => _txtSecretWord.Text;
 
     public void ShowMessage(string message, string title = "Music App")
     {

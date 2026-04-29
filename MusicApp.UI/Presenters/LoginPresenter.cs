@@ -37,4 +37,9 @@ public class LoginPresenter
     {
         _view.OpenRegistration();
     }
+
+    public void RecoverPassword()
+    {
+        _view.OpenPasswordRecovery();
+    }
 }

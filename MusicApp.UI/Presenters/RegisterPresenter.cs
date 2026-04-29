@@ -18,9 +18,10 @@ public class RegisterPresenter
         var result = await _authService.RegisterAsync(
             _view.Username,
             _view.Password,
-            _view.ConfirmPassword);
+            _view.ConfirmPassword,
+            _view.SecretWord);
 
-        _view.ShowMessage(result.Message, result.Success ? "–£—Å–ø–µ—Ö" : "–û—à–∏–±–∫–∞");
+        _view.ShowMessage(result.Message, result.Success ? "”ÒÔÂı" : "Œ¯Ë·Í‡");
 
         if (result.Success)
         {

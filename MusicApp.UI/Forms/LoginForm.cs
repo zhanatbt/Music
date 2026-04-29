@@ -15,6 +15,7 @@ public class LoginForm : Form, ILoginView
     private readonly TextBox _txtPassword;
     private readonly Button _btnLogin;
     private readonly Button _btnRegister;
+    private readonly Button _btnRecoverPassword;
 
     public LoginForm(AuthService authService, AdminCatalogService adminCatalogService, MusicLibraryService musicLibraryService)
     {
@@ -24,8 +25,8 @@ public class LoginForm : Form, ILoginView
         _presenter = new LoginPresenter(this, authService);
 
         Text = "Music App - Login";
-        Width = 380;
-        Height = 260;
+        Width = 400;
+        Height = 290;
         StartPosition = FormStartPosition.CenterScreen;
 
         var title = new Label
@@ -42,11 +43,11 @@ public class LoginForm : Form, ILoginView
             Dock = DockStyle.Fill,
             Padding = new Padding(24),
             ColumnCount = 1,
-            RowCount = 6
+            RowCount = 7
         };
 
         panel.RowStyles.Clear();
-        for (var i = 0; i < 6; i++)
+        for (var i = 0; i < 7; i++)
         {
             panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
         }
@@ -60,10 +61,12 @@ public class LoginForm : Form, ILoginView
         panel.Controls.Add(_txtPassword, 0, 3);
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight };
-        _btnLogin = new Button { Text = "Войти", Width = 120 };
-        _btnRegister = new Button { Text = "Регистрация", Width = 120 };
+        _btnLogin = new Button { Text = "Войти", Width = 110 };
+        _btnRegister = new Button { Text = "Регистрация", Width = 110 };
+        _btnRecoverPassword = new Button { Text = "Забыли пароль?", Width = 120 };
         buttons.Controls.Add(_btnLogin);
         buttons.Controls.Add(_btnRegister);
+        buttons.Controls.Add(_btnRecoverPassword);
         panel.Controls.Add(buttons, 0, 4);
 
         var hint = new Label
@@ -78,6 +81,7 @@ public class LoginForm : Form, ILoginView
 
         _btnLogin.Click += async (_, _) => await _presenter.LoginAsync();
         _btnRegister.Click += (_, _) => _presenter.Register();
+        _btnRecoverPassword.Click += (_, _) => _presenter.RecoverPassword();
     }
 
     public string Username => _txtUsername.Text;
@@ -91,6 +95,12 @@ public class LoginForm : Form, ILoginView
     public void OpenRegistration()
     {
         using var form = new RegisterForm(_authService);
+        form.ShowDialog(this);
+    }
+
+    public void OpenPasswordRecovery()
+    {
+        using var form = new RecoverPasswordForm(_authService, _txtUsername.Text);
         form.ShowDialog(this);
     }
 

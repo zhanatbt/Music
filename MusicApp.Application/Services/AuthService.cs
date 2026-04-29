@@ -23,13 +23,13 @@ public class AuthService
     {
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
-            return OperationResult<UserSessionDto>.Fail("Р’РІРµРґРёС‚Рµ Р»РѕРіРёРЅ Рё РїР°СЂРѕР»СЊ.");
+            return OperationResult<UserSessionDto>.Fail("Введите логин и пароль.");
         }
 
         var user = await _userRepository.GetByUsernameAsync(username.Trim(), cancellationToken);
         if (user is null || !_passwordHasher.Verify(password, user.PasswordHash))
         {
-            return OperationResult<UserSessionDto>.Fail("РќРµРІРµСЂРЅС‹Р№ Р»РѕРіРёРЅ РёР»Рё РїР°СЂРѕР»СЊ.");
+            return OperationResult<UserSessionDto>.Fail("Неверный логин или пароль.");
         }
 
         return OperationResult<UserSessionDto>.Ok(new UserSessionDto
@@ -40,11 +40,11 @@ public class AuthService
         });
     }
 
-    public async Task<OperationResult> RegisterAsync(string username, string password, string confirmPassword, CancellationToken cancellationToken = default)
+    public async Task<OperationResult> RegisterAsync(string username, string password, string confirmPassword, string secretWord, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(username))
         {
-            return OperationResult.Fail("РРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј.");
+            return OperationResult.Fail("Имя пользователя не может быть пустым.");
         }
 
         var passwordValidation = _passwordValidator.Validate(password);
@@ -55,24 +55,69 @@ public class AuthService
 
         if (!string.Equals(password, confirmPassword, StringComparison.Ordinal))
         {
-            return OperationResult.Fail("РџР°СЂРѕР»Рё РЅРµ СЃРѕРІРїР°РґР°СЋС‚.");
+            return OperationResult.Fail("Пароли не совпадают.");
+        }
+
+        if (string.IsNullOrWhiteSpace(secretWord))
+        {
+            return OperationResult.Fail("Кодовое слово не может быть пустым.");
         }
 
         var normalized = username.Trim();
         var existing = await _userRepository.GetByUsernameAsync(normalized, cancellationToken);
         if (existing is not null)
         {
-            return OperationResult.Fail("РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ СЃ С‚Р°РєРёРј Р»РѕРіРёРЅРѕРј СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚.");
+            return OperationResult.Fail("Пользователь с таким логином уже существует.");
         }
 
         var user = new User
         {
             Username = normalized,
             PasswordHash = _passwordHasher.Hash(password),
+            SecretWordHash = _passwordHasher.Hash(secretWord.Trim()),
             Role = UserRole.User
         };
 
         await _userRepository.AddAsync(user, cancellationToken);
-        return OperationResult.Ok("Р РµРіРёСЃС‚СЂР°С†РёСЏ РІС‹РїРѕР»РЅРµРЅР°.");
+        return OperationResult.Ok("Регистрация выполнена.");
+    }
+
+    public async Task<OperationResult> RecoverPasswordAsync(
+        string username,
+        string secretWord,
+        string newPassword,
+        string confirmNewPassword,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(secretWord))
+        {
+            return OperationResult.Fail("Введите логин и кодовое слово.");
+        }
+
+        var passwordValidation = _passwordValidator.Validate(newPassword);
+        if (!passwordValidation.Success)
+        {
+            return passwordValidation;
+        }
+
+        if (!string.Equals(newPassword, confirmNewPassword, StringComparison.Ordinal))
+        {
+            return OperationResult.Fail("Новые пароли не совпадают.");
+        }
+
+        var user = await _userRepository.GetByUsernameAsync(username.Trim(), cancellationToken);
+        if (user is null)
+        {
+            return OperationResult.Fail("Пользователь не найден.");
+        }
+
+        if (string.IsNullOrWhiteSpace(user.SecretWordHash) || !_passwordHasher.Verify(secretWord.Trim(), user.SecretWordHash))
+        {
+            return OperationResult.Fail("Неверное кодовое слово.");
+        }
+
+        user.PasswordHash = _passwordHasher.Hash(newPassword);
+        await _userRepository.UpdateAsync(user, cancellationToken);
+        return OperationResult.Ok("Пароль успешно изменен.");
     }
 }
