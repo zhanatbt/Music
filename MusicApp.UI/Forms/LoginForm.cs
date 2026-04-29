@@ -1,4 +1,4 @@
-using MusicApp.Application.DTOs;
+п»їusing MusicApp.Application.DTOs;
 using MusicApp.Application.Services;
 using MusicApp.UI.Presenters;
 
@@ -25,15 +25,15 @@ public class LoginForm : Form, ILoginView
         _presenter = new LoginPresenter(this, authService);
 
         Text = "Music App - Login";
-        Width = 400;
-        Height = 290;
+        Width = 560;
+        Height = 320;
         StartPosition = FormStartPosition.CenterScreen;
 
         var title = new Label
         {
-            Text = "Авторизация",
+            Text = "РђРІС‚РѕСЂРёР·Р°С†РёСЏ",
             Dock = DockStyle.Top,
-            Height = 40,
+            Height = 44,
             TextAlign = ContentAlignment.MiddleCenter,
             Font = new Font("Segoe UI", 13, FontStyle.Bold)
         };
@@ -49,21 +49,27 @@ public class LoginForm : Form, ILoginView
         panel.RowStyles.Clear();
         for (var i = 0; i < 7; i++)
         {
-            panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+            panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
         }
 
-        panel.Controls.Add(new Label { Text = "Логин", AutoSize = true }, 0, 0);
+        panel.Controls.Add(new Label { Text = "Р›РѕРіРёРЅ", AutoSize = true }, 0, 0);
         _txtUsername = new TextBox { Dock = DockStyle.Fill };
         panel.Controls.Add(_txtUsername, 0, 1);
 
-        panel.Controls.Add(new Label { Text = "Пароль", AutoSize = true }, 0, 2);
+        panel.Controls.Add(new Label { Text = "РџР°СЂРѕР»СЊ", AutoSize = true }, 0, 2);
         _txtPassword = new TextBox { Dock = DockStyle.Fill, UseSystemPasswordChar = true };
         panel.Controls.Add(_txtPassword, 0, 3);
 
-        var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight };
-        _btnLogin = new Button { Text = "Войти", Width = 110 };
-        _btnRegister = new Button { Text = "Регистрация", Width = 110 };
-        _btnRecoverPassword = new Button { Text = "Забыли пароль?", Width = 120 };
+        var buttons = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            AutoSize = true
+        };
+        _btnLogin = new Button { Text = "Р’РѕР№С‚Рё", Width = 140, Height = 34 };
+        _btnRegister = new Button { Text = "Р РµРіРёСЃС‚СЂР°С†РёСЏ", Width = 140, Height = 34 };
+        _btnRecoverPassword = new Button { Text = "Р—Р°Р±С‹Р»Рё РїР°СЂРѕР»СЊ?", Width = 170, Height = 34 };
         buttons.Controls.Add(_btnLogin);
         buttons.Controls.Add(_btnRegister);
         buttons.Controls.Add(_btnRecoverPassword);
@@ -71,7 +77,7 @@ public class LoginForm : Form, ILoginView
 
         var hint = new Label
         {
-            Text = "Тестовые учётные записи: admin/admin123, user/user123",
+            Text = "РўРµСЃС‚РѕРІС‹Рµ СѓС‡С‘С‚РЅС‹Рµ Р·Р°РїРёСЃРё: admin/admin123, user/user123",
             AutoSize = true
         };
         panel.Controls.Add(hint, 0, 5);

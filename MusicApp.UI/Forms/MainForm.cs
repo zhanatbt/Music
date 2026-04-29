@@ -33,7 +33,7 @@ public class MainForm : Form, IMainView
         Height = 760;
         StartPosition = FormStartPosition.CenterParent;
 
-        var header = new Panel { Dock = DockStyle.Top, Height = 106, Padding = new Padding(12) };
+        var header = new Panel { Dock = DockStyle.Top, Height = 118, Padding = new Padding(12) };
 
         var titleLabel = new Label { Text = "Название", Left = 12, Top = 14, Width = 80 };
         _txtTitleFilter = new TextBox { Left = 98, Top = 12, Width = 220 };
@@ -47,10 +47,10 @@ public class MainForm : Form, IMainView
         var genreLabel = new Label { Text = "Жанр", Left = 330, Top = 48, Width = 90 };
         _txtGenreFilter = new TextBox { Left = 425, Top = 46, Width = 220 };
 
-        var btnSearch = new Button { Text = "Поиск", Left = 660, Top = 28, Width = 110 };
-        var btnReset = new Button { Text = "Сбросить", Left = 780, Top = 28, Width = 110 };
-        var btnPlay = new Button { Text = "Слушать preview", Left = 900, Top = 12, Width = 140 };
-        var btnAddToPlaylist = new Button { Text = "Добавить в выбранный плейлист", Left = 1050, Top = 12, Width = 220 };
+        var btnSearch = new Button { Text = "Поиск", Left = 660, Top = 22, Width = 130, Height = 36 };
+        var btnReset = new Button { Text = "Сбросить", Left = 800, Top = 22, Width = 130, Height = 36 };
+        var btnPlay = new Button { Text = "Слушать preview", Left = 940, Top = 22, Width = 170, Height = 36 };
+        var btnAddToPlaylist = new Button { Text = "Добавить в плейлист", Left = 940, Top = 64, Width = 250, Height = 36 };
 
         header.Controls.AddRange([titleLabel, _txtTitleFilter, artistLabel, _txtArtistFilter, albumLabel, _txtAlbumFilter, genreLabel, _txtGenreFilter, btnSearch, btnReset, btnPlay, btnAddToPlaylist]);
 
@@ -59,7 +59,9 @@ public class MainForm : Form, IMainView
             Dock = DockStyle.Left,
             Width = 420,
             Orientation = Orientation.Horizontal,
-            SplitterDistance = 300
+            SplitterDistance = 190,
+            Panel1MinSize = 150,
+            Panel2MinSize = 320
         };
 
         leftSplit.Panel1.Padding = new Padding(12, 12, 6, 6);
@@ -145,7 +147,7 @@ public class MainForm : Form, IMainView
     {
         var panel = new Panel { Dock = DockStyle.Fill };
 
-        var topPanel = new Panel { Dock = DockStyle.Top, Height = 68 };
+        var topPanel = new Panel { Dock = DockStyle.Top, Height = 54 };
         var titleLabel = new Label
         {
             Text = "Плейлисты",
@@ -160,10 +162,10 @@ public class MainForm : Form, IMainView
         topPanel.Controls.Add(hintLabel);
         topPanel.Controls.Add(titleLabel);
 
-        var bottomPanel = new Panel { Dock = DockStyle.Bottom, Height = 108 };
+        var bottomPanel = new Panel { Dock = DockStyle.Bottom, Height = 82 };
         _txtNewPlaylist = new TextBox { Dock = DockStyle.Top };
-        var btnCreatePlaylist = new Button { Text = "Создать плейлист", Dock = DockStyle.Bottom, Height = 32 };
-        var btnDeletePlaylist = new Button { Text = "Удалить пустой плейлист", Dock = DockStyle.Bottom, Height = 32 };
+        var btnCreatePlaylist = new Button { Text = "Создать плейлист", Dock = DockStyle.Bottom, Height = 30 };
+        var btnDeletePlaylist = new Button { Text = "Удалить пустой плейлист", Dock = DockStyle.Bottom, Height = 30 };
         btnCreatePlaylist.Click += async (_, _) => await _presenter.CreatePlaylistAsync();
         btnDeletePlaylist.Click += async (_, _) => await _presenter.DeleteSelectedPlaylistAsync();
         bottomPanel.Controls.Add(_txtNewPlaylist);
@@ -207,7 +209,7 @@ public class MainForm : Form, IMainView
     {
         var panel = new Panel { Dock = DockStyle.Fill };
 
-        var topPanel = new Panel { Dock = DockStyle.Top, Height = 56 };
+        var topPanel = new Panel { Dock = DockStyle.Top, Height = 48 };
         var titleLabel = new Label
         {
             Text = "Треки выбранного плейлиста",
@@ -218,7 +220,7 @@ public class MainForm : Form, IMainView
         {
             Text = "Удалить из плейлиста",
             Dock = DockStyle.Bottom,
-            Height = 28
+            Height = 30
         };
         btnRemoveTrack.Click += async (_, _) => await _presenter.RemoveSelectedTrackFromPlaylistAsync();
         topPanel.Controls.Add(btnRemoveTrack);
