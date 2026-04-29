@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using MusicApp.Application.Interfaces;
 using MusicApp.Domain.Entities;
 using MusicApp.Infrastructure.Data;

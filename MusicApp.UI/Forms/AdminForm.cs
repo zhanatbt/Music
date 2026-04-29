@@ -37,6 +37,7 @@ public partial class AdminForm : Form, IAdminView
     private TextBox _txtCategoryLookupSearch = null!;
     private TextBox _txtGenreLookupSearch = null!;
     private TextBox _txtArtistLookupSearch = null!;
+    private TextBox _txtUserSearch = null!;
     private TextBox _txtNewCategoryName = null!;
     private TextBox _txtNewGenreName = null!;
     private TextBox _txtNewArtistName = null!;
@@ -57,6 +58,7 @@ public partial class AdminForm : Form, IAdminView
     private List<ArtistDto> _artistLookupAll = [];
     private List<GenreDto> _allGenres = [];
     private List<ArtistDto> _allArtists = [];
+    private List<UserSessionDto> _allUsers = [];
     private int? _editingTrackId;
     private string? _importedGenreName;
     private bool _suppressUserSelectionChanged;
@@ -222,9 +224,11 @@ public partial class AdminForm : Form, IAdminView
 
     public void SetUsers(IReadOnlyList<UserSessionDto> users)
     {
+        _allUsers = users.ToList();
         _suppressUserSelectionChanged = true;
-        _usersSource.DataSource = users;
+        _usersSource.DataSource = _allUsers;
         _suppressUserSelectionChanged = false;
+        ApplyUserFilter(_txtUserSearch?.Text ?? string.Empty);
     }
 
     public void SetUserPlaylists(IReadOnlyList<PlaylistDto> playlists)
@@ -673,6 +677,30 @@ public partial class AdminForm : Form, IAdminView
 
     private Control BuildUsersLayout()
     {
+        var host = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 2,
+            Padding = new Padding(12)
+        };
+        host.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        host.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        var searchPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            WrapContents = false
+        };
+        _txtUserSearch = new TextBox { Width = 320, PlaceholderText = "Поиск пользователя по логину..." };
+        var btnSearch = new Button { Text = "Поиск", AutoSize = true };
+        var btnReset = new Button { Text = "Сбросить", AutoSize = true };
+        searchPanel.Controls.Add(_txtUserSearch);
+        searchPanel.Controls.Add(btnSearch);
+        searchPanel.Controls.Add(btnReset);
+        host.Controls.Add(searchPanel, 0, 0);
+
         var root = new SplitContainer
         {
             Dock = DockStyle.Fill,
@@ -699,7 +727,17 @@ public partial class AdminForm : Form, IAdminView
         rightSplit.Panel2.Controls.Add(_gridUserPlaylistTracks);
 
         root.Panel2.Controls.Add(rightSplit);
-        return root;
+        host.Controls.Add(root, 0, 1);
+
+        _txtUserSearch.TextChanged += (_, _) => ApplyUserFilter(_txtUserSearch.Text);
+        btnSearch.Click += (_, _) => ApplyUserFilter(_txtUserSearch.Text);
+        btnReset.Click += (_, _) =>
+        {
+            _txtUserSearch.Clear();
+            ApplyUserFilter(string.Empty);
+        };
+
+        return host;
     }
 
     private Control BuildDeezerLayout()
@@ -913,6 +951,25 @@ public partial class AdminForm : Form, IAdminView
                 .ToList();
 
         _artistLookupSource.DataSource = filtered;
+    }
+
+    private void ApplyUserFilter(string filterText)
+    {
+        var filtered = string.IsNullOrWhiteSpace(filterText)
+            ? _allUsers
+            : _allUsers
+                .Where(x => x.Username.Contains(filterText, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+        _suppressUserSelectionChanged = true;
+        _usersSource.DataSource = filtered;
+        _suppressUserSelectionChanged = false;
+
+        if (!filtered.Any())
+        {
+            SetUserPlaylists([]);
+            SetSelectedUserPlaylistTracks([]);
+        }
     }
 
     private static DataGridView CreateGrid(object dataSource)
