@@ -70,7 +70,7 @@ public class MainForm : Form, IMainView
         _gridTracks = new DataGridView
         {
             Dock = DockStyle.Fill,
-            ReadOnly = true,
+            ReadOnly = false,
             AutoGenerateColumns = true,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             MultiSelect = false,
@@ -199,13 +199,14 @@ public class MainForm : Form, IMainView
         _gridPlaylistTracks = new DataGridView
         {
             Dock = DockStyle.Fill,
-            ReadOnly = true,
+            ReadOnly = false,
             AutoGenerateColumns = true,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             MultiSelect = false,
             AllowUserToAddRows = false,
             DataSource = _playlistTracksSource
         };
+        _gridPlaylistTracks.DataBindingComplete += (_, _) => EnsureSelectColumn(_gridPlaylistTracks, "PlaylistSelectColumn");
 
         panel.Controls.Add(_gridPlaylistTracks);
         panel.Controls.Add(topPanel);
@@ -218,16 +219,19 @@ public class MainForm : Form, IMainView
     public string GenreFilter => _txtGenreFilter.Text;
 
     public int? SelectedTrackId => _gridTracks.CurrentRow?.DataBoundItem is TrackDto track ? track.Id : null;
+    public IReadOnlyList<int> SelectedTrackIds => GetCheckedTrackIds(_gridTracks, "TrackSelectColumn");
 
     public int? SelectedPlaylistId => _gridPlaylists.CurrentRow?.DataBoundItem is PlaylistDto playlist ? playlist.Id : null;
 
     public int? SelectedPlaylistTrackId => _gridPlaylistTracks.CurrentRow?.DataBoundItem is TrackDto track ? track.Id : null;
+    public IReadOnlyList<int> SelectedPlaylistTrackIds => GetCheckedTrackIds(_gridPlaylistTracks, "PlaylistSelectColumn");
 
     public string NewPlaylistName => _txtNewPlaylist.Text;
 
     public void SetTracks(IReadOnlyList<TrackDto> tracks)
     {
         _tracksSource.DataSource = tracks.ToList();
+        EnsureSelectColumn(_gridTracks, "TrackSelectColumn");
     }
 
     public void SetPlaylists(IReadOnlyList<PlaylistDto> playlists)
@@ -240,6 +244,7 @@ public class MainForm : Form, IMainView
     public void SetPlaylistTracks(IReadOnlyList<TrackDto> tracks)
     {
         _playlistTracksSource.DataSource = tracks.ToList();
+        EnsureSelectColumn(_gridPlaylistTracks, "PlaylistSelectColumn");
     }
 
     public void AddPlaylist(PlaylistDto playlist)
@@ -300,5 +305,40 @@ public class MainForm : Form, IMainView
         }
 
         await _presenter.PlaylistSelectionChangedAsync();
+    }
+
+    private static IReadOnlyList<int> GetCheckedTrackIds(DataGridView grid, string selectColumnName)
+    {
+        return grid.Rows
+            .Cast<DataGridViewRow>()
+            .Where(row => row.DataBoundItem is TrackDto &&
+                          row.Cells[selectColumnName].Value is bool isChecked &&
+                          isChecked)
+            .Select(row => ((TrackDto)row.DataBoundItem!).Id)
+            .ToList();
+    }
+
+    private static void EnsureSelectColumn(DataGridView grid, string selectColumnName)
+    {
+        if (!grid.Columns.Contains(selectColumnName))
+        {
+            grid.Columns.Insert(0, new DataGridViewCheckBoxColumn
+            {
+                Name = selectColumnName,
+                HeaderText = "Выбрать",
+                Width = 70,
+                ReadOnly = false,
+                TrueValue = true,
+                FalseValue = false
+            });
+        }
+
+        foreach (DataGridViewColumn column in grid.Columns)
+        {
+            if (column.Name != selectColumnName)
+            {
+                column.ReadOnly = true;
+            }
+        }
     }
 }

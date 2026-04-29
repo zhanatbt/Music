@@ -9,8 +9,10 @@ public interface IMainView
     string AlbumFilter { get; }
     string GenreFilter { get; }
     int? SelectedTrackId { get; }
+    IReadOnlyList<int> SelectedTrackIds { get; }
     int? SelectedPlaylistId { get; }
     int? SelectedPlaylistTrackId { get; }
+    IReadOnlyList<int> SelectedPlaylistTrackIds { get; }
     string NewPlaylistName { get; }
     void SetTracks(IReadOnlyList<TrackDto> tracks);
     void SetPlaylists(IReadOnlyList<PlaylistDto> playlists);
