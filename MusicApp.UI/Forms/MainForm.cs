@@ -71,11 +71,39 @@ public class MainForm : Form, IMainView
         {
             Dock = DockStyle.Fill,
             ReadOnly = false,
-            AutoGenerateColumns = true,
+            AutoGenerateColumns = false,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             MultiSelect = false,
             AllowUserToAddRows = false
         };
+        _gridTracks.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            DataPropertyName = nameof(TrackDto.Artist),
+            HeaderText = "Исполнитель",
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+            FillWeight = 28
+        });
+        _gridTracks.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            DataPropertyName = nameof(TrackDto.Title),
+            HeaderText = "Название",
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+            FillWeight = 32
+        });
+        _gridTracks.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            DataPropertyName = nameof(TrackDto.Genre),
+            HeaderText = "Жанр",
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+            FillWeight = 20
+        });
+        _gridTracks.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            DataPropertyName = nameof(TrackDto.Category),
+            HeaderText = "Категория",
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+            FillWeight = 20
+        });
         _gridTracks.DataSource = _tracksSource;
 
         _player = new AxWindowsMediaPlayer();
@@ -200,12 +228,40 @@ public class MainForm : Form, IMainView
         {
             Dock = DockStyle.Fill,
             ReadOnly = false,
-            AutoGenerateColumns = true,
+            AutoGenerateColumns = false,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             MultiSelect = false,
             AllowUserToAddRows = false,
             DataSource = _playlistTracksSource
         };
+        _gridPlaylistTracks.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            DataPropertyName = nameof(TrackDto.Artist),
+            HeaderText = "Исполнитель",
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+            FillWeight = 28
+        });
+        _gridPlaylistTracks.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            DataPropertyName = nameof(TrackDto.Title),
+            HeaderText = "Название",
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+            FillWeight = 32
+        });
+        _gridPlaylistTracks.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            DataPropertyName = nameof(TrackDto.Genre),
+            HeaderText = "Жанр",
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+            FillWeight = 20
+        });
+        _gridPlaylistTracks.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            DataPropertyName = nameof(TrackDto.Category),
+            HeaderText = "Категория",
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+            FillWeight = 20
+        });
         _gridPlaylistTracks.DataBindingComplete += (_, _) => EnsureSelectColumn(_gridPlaylistTracks, "PlaylistSelectColumn");
 
         panel.Controls.Add(_gridPlaylistTracks);
