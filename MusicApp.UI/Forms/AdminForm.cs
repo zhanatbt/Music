@@ -12,6 +12,8 @@ public partial class AdminForm : Form, IAdminView
     private readonly BindingSource _categoriesSource = new();
     private readonly BindingSource _tracksSource = new();
     private readonly BindingSource _usersSource = new();
+    private readonly BindingSource _userPlaylistsSource = new();
+    private readonly BindingSource _userPlaylistTracksSource = new();
     private readonly BindingSource _deezerSource = new();
     private readonly BindingSource _categoryLookupSource = new();
     private readonly BindingSource _genreLookupSource = new();
@@ -44,6 +46,9 @@ public partial class AdminForm : Form, IAdminView
     private DataGridView _gridCategoryLookup = null!;
     private DataGridView _gridGenreLookup = null!;
     private DataGridView _gridArtistLookup = null!;
+    private DataGridView _gridUsers = null!;
+    private DataGridView _gridUserPlaylists = null!;
+    private DataGridView _gridUserPlaylistTracks = null!;
     private Label _lblNowPlaying = null!;
     private AxWindowsMediaPlayer _player = null!;
     private readonly List<DeezerTrackDto> _deezerResults = new();
@@ -54,6 +59,8 @@ public partial class AdminForm : Form, IAdminView
     private List<ArtistDto> _allArtists = [];
     private int? _editingTrackId;
     private string? _importedGenreName;
+    private bool _suppressUserSelectionChanged;
+    private bool _suppressUserPlaylistSelectionChanged;
 
     public AdminForm()
     {
@@ -116,6 +123,8 @@ public partial class AdminForm : Form, IAdminView
     public string? ImportedAudioFilePath => string.IsNullOrWhiteSpace(_txtAudioFilePath.Text) ? null : _txtAudioFilePath.Text;
     public string? ImportedGenreName => _importedGenreName;
     public TrackDto? SelectedTrack => _gridTracks.CurrentRow?.DataBoundItem as TrackDto;
+    public UserSessionDto? SelectedUser => _gridUsers?.CurrentRow?.DataBoundItem as UserSessionDto;
+    public PlaylistDto? SelectedUserPlaylist => _gridUserPlaylists?.CurrentRow?.DataBoundItem as PlaylistDto;
     public DeezerTrackDto? SelectedDeezerTrack => _gridDeezer.CurrentRow?.DataBoundItem as DeezerTrackDto;
     public IReadOnlyList<DeezerTrackDto> SelectedDeezerTracks =>
         _gridDeezer.Rows
@@ -213,7 +222,21 @@ public partial class AdminForm : Form, IAdminView
 
     public void SetUsers(IReadOnlyList<UserSessionDto> users)
     {
+        _suppressUserSelectionChanged = true;
         _usersSource.DataSource = users;
+        _suppressUserSelectionChanged = false;
+    }
+
+    public void SetUserPlaylists(IReadOnlyList<PlaylistDto> playlists)
+    {
+        _suppressUserPlaylistSelectionChanged = true;
+        _userPlaylistsSource.DataSource = playlists.ToList();
+        _suppressUserPlaylistSelectionChanged = false;
+    }
+
+    public void SetSelectedUserPlaylistTracks(IReadOnlyList<TrackDto> tracks)
+    {
+        _userPlaylistTracksSource.DataSource = tracks.ToList();
     }
 
     public void SetDeezerResults(IReadOnlyList<DeezerTrackDto> tracks)
@@ -648,6 +671,37 @@ public partial class AdminForm : Form, IAdminView
         return panel;
     }
 
+    private Control BuildUsersLayout()
+    {
+        var root = new SplitContainer
+        {
+            Dock = DockStyle.Fill,
+            Orientation = Orientation.Vertical,
+            SplitterDistance = 360
+        };
+
+        _gridUsers = CreateGrid(_usersSource);
+        _gridUsers.SelectionChanged += GridUsers_SelectionChanged;
+        root.Panel1.Controls.Add(_gridUsers);
+
+        var rightSplit = new SplitContainer
+        {
+            Dock = DockStyle.Fill,
+            Orientation = Orientation.Horizontal,
+            SplitterDistance = 260
+        };
+
+        _gridUserPlaylists = CreateGrid(_userPlaylistsSource);
+        _gridUserPlaylists.SelectionChanged += GridUserPlaylists_SelectionChanged;
+        rightSplit.Panel1.Controls.Add(_gridUserPlaylists);
+
+        _gridUserPlaylistTracks = CreateGrid(_userPlaylistTracksSource);
+        rightSplit.Panel2.Controls.Add(_gridUserPlaylistTracks);
+
+        root.Panel2.Controls.Add(rightSplit);
+        return root;
+    }
+
     private Control BuildDeezerLayout()
     {
         var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
@@ -1022,6 +1076,32 @@ public partial class AdminForm : Form, IAdminView
     private static bool IsInDesigner()
     {
         return LicenseManager.UsageMode == LicenseUsageMode.Designtime;
+    }
+
+    private async void GridUsers_SelectionChanged(object? sender, EventArgs e)
+    {
+        if (_suppressUserSelectionChanged)
+        {
+            return;
+        }
+
+        if (_presenter is not null)
+        {
+            await _presenter.UserSelectionChangedAsync();
+        }
+    }
+
+    private async void GridUserPlaylists_SelectionChanged(object? sender, EventArgs e)
+    {
+        if (_suppressUserPlaylistSelectionChanged)
+        {
+            return;
+        }
+
+        if (_presenter is not null)
+        {
+            await _presenter.UserPlaylistSelectionChangedAsync();
+        }
     }
 
 }

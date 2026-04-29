@@ -57,7 +57,7 @@ partial class AdminForm
         _usersTab.Padding = new Padding(3);
         _usersTab.Text = "Пользователи";
         _usersTab.UseVisualStyleBackColor = true;
-        _usersTab.Controls.Add(CreateGrid(_usersSource));
+        _usersTab.Controls.Add(BuildUsersLayout());
 
         _categoriesTab.Name = "_categoriesTab";
         _categoriesTab.Padding = new Padding(3);

@@ -32,6 +32,8 @@ public interface IAdminView
     string? ImportedAudioFilePath { get; }
     string? ImportedGenreName { get; }
     TrackDto? SelectedTrack { get; }
+    UserSessionDto? SelectedUser { get; }
+    PlaylistDto? SelectedUserPlaylist { get; }
     DeezerTrackDto? SelectedDeezerTrack { get; }
     IReadOnlyList<DeezerTrackDto> SelectedDeezerTracks { get; }
     IReadOnlyList<DeezerTrackDto> AllDeezerTracks { get; }
@@ -46,6 +48,8 @@ public interface IAdminView
     void SetCategories(IReadOnlyList<CategoryDto> categories);
     void SetTracks(IReadOnlyList<TrackDto> tracks);
     void SetUsers(IReadOnlyList<UserSessionDto> users);
+    void SetUserPlaylists(IReadOnlyList<PlaylistDto> playlists);
+    void SetSelectedUserPlaylistTracks(IReadOnlyList<TrackDto> tracks);
     void SetDeezerResults(IReadOnlyList<DeezerTrackDto> tracks);
     void LoadTrackIntoEditor(TrackDto track);
     void ClearNewCategoryInput();

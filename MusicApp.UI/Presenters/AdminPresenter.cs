@@ -7,6 +7,7 @@ public class AdminPresenter
 {
     private readonly IAdminView _view;
     private readonly AdminCatalogService _catalogService;
+    private readonly SemaphoreSlim _operationLock = new(1, 1);
 
     public AdminPresenter(IAdminView view, AdminCatalogService catalogService)
     {
@@ -16,7 +17,7 @@ public class AdminPresenter
 
     public async Task LoadAsync()
     {
-        await ReloadAsync();
+        await ExecuteSerializedAsync(ReloadAsync);
     }
 
     public async Task AddGenreAsync()
@@ -237,6 +238,38 @@ public class AdminPresenter
         _view.SetTracks(tracks);
     }
 
+    public async Task UserSelectionChangedAsync()
+    {
+        await ExecuteSerializedAsync(async () =>
+        {
+            if (_view.SelectedUser is null)
+            {
+                _view.SetUserPlaylists([]);
+                _view.SetSelectedUserPlaylistTracks([]);
+                return;
+            }
+
+            var playlists = await _catalogService.GetUserPlaylistsAsync(_view.SelectedUser.UserId);
+            _view.SetUserPlaylists(playlists);
+            _view.SetSelectedUserPlaylistTracks([]);
+        });
+    }
+
+    public async Task UserPlaylistSelectionChangedAsync()
+    {
+        await ExecuteSerializedAsync(async () =>
+        {
+            if (_view.SelectedUserPlaylist is null)
+            {
+                _view.SetSelectedUserPlaylistTracks([]);
+                return;
+            }
+
+            var tracks = await _catalogService.GetPlaylistTracksAsync(_view.SelectedUserPlaylist.Id);
+            _view.SetSelectedUserPlaylistTracks(tracks);
+        });
+    }
+
     public async Task ImportDeezerTracksAsync()
     {
         var tracksToImport = _view.SelectedDeezerTracks.ToList();
@@ -342,5 +375,20 @@ public class AdminPresenter
         _view.SetCategories(categories);
         _view.SetTracks(await _catalogService.GetTracksAsync());
         _view.SetUsers(await _catalogService.GetUsersAsync());
+        _view.SetUserPlaylists([]);
+        _view.SetSelectedUserPlaylistTracks([]);
+    }
+
+    private async Task ExecuteSerializedAsync(Func<Task> action)
+    {
+        await _operationLock.WaitAsync();
+        try
+        {
+            await action();
+        }
+        finally
+        {
+            _operationLock.Release();
+        }
     }
 }

@@ -14,6 +14,7 @@ public class AdminCatalogService
     private readonly IArtistRepository _artistRepository;
     private readonly IAlbumRepository _albumRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IPlaylistRepository _playlistRepository;
     private readonly IMusicImportClient _musicImportClient;
     private readonly IAudioMetadataReader _audioMetadataReader;
     private readonly IFileStorageService _fileStorageService;
@@ -25,6 +26,7 @@ public class AdminCatalogService
         IArtistRepository artistRepository,
         IAlbumRepository albumRepository,
         IUserRepository userRepository,
+        IPlaylistRepository playlistRepository,
         IMusicImportClient musicImportClient,
         IAudioMetadataReader audioMetadataReader,
         IFileStorageService fileStorageService)
@@ -35,6 +37,7 @@ public class AdminCatalogService
         _artistRepository = artistRepository;
         _albumRepository = albumRepository;
         _userRepository = userRepository;
+        _playlistRepository = playlistRepository;
         _musicImportClient = musicImportClient;
         _audioMetadataReader = audioMetadataReader;
         _fileStorageService = fileStorageService;
@@ -99,6 +102,18 @@ public class AdminCatalogService
         return users
             .Select(u => new UserSessionDto { UserId = u.Id, Username = u.Username, Role = u.Role })
             .ToList();
+    }
+
+    public async Task<IReadOnlyList<PlaylistDto>> GetUserPlaylistsAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        var playlists = await _playlistRepository.GetByUserIdAsync(userId, cancellationToken);
+        return playlists.Select(LookupMapper.ToDto).ToList();
+    }
+
+    public async Task<IReadOnlyList<TrackDto>> GetPlaylistTracksAsync(int playlistId, CancellationToken cancellationToken = default)
+    {
+        var tracks = await _playlistRepository.GetTracksByPlaylistIdAsync(playlistId, cancellationToken);
+        return NormalizeTrackPreviewUrls(tracks);
     }
 
     public async Task<IReadOnlyList<ArtistDto>> GetArtistsAsync(CancellationToken cancellationToken = default)

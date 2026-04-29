@@ -55,6 +55,7 @@ internal static class Program
             artistRepository,
             albumRepository,
             userRepository,
+            playlistRepository,
             new DeezerClient(httpClient),
             new TagLibAudioMetadataReader(),
             fileStorageService);
