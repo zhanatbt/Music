@@ -1,5 +1,6 @@
 ﻿using MusicApp.Application.DTOs;
 using MusicApp.Application.Services;
+using MusicApp.Domain.Common;
 
 namespace MusicApp.UI.Presenters;
 
@@ -9,12 +10,16 @@ public class MainPresenter
     private readonly MusicLibraryService _musicLibraryService;
     private readonly UserSessionDto _session;
     private readonly SemaphoreSlim _operationLock = new(1, 1);
+    private List<TrackDto> _currentQueue = [];
+    private int _currentIndex = -1;
+    private readonly Random _random = new();
 
     public MainPresenter(IMainView view, MusicLibraryService musicLibraryService, UserSessionDto session)
     {
         _view = view;
         _musicLibraryService = musicLibraryService;
         _session = session;
+        _view.TrackFinished += OnTrackFinished;
     }
 
     public async Task LoadAsync()
@@ -42,16 +47,22 @@ public class MainPresenter
         await ExecuteSerializedAsync(async () =>
         {
             var playlistName = _view.NewPlaylistName;
-            var result = await _musicLibraryService.CreatePlaylistAsync(_session.UserId, playlistName);
-            _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
 
-            if (result.Success && result.Data is not null)
+            if (string.IsNullOrWhiteSpace(playlistName))
+            {
+                _view.ShowMessage("Напишите название плейлиста перед созданием!");
+                return;
+            }
+
+            var result = await _musicLibraryService.CreatePlaylistAsync(_session.UserId, playlistName);
+
+            if (result.Success && result.Data != null)
             {
                 _view.AddPlaylist(result.Data);
-                _view.SelectPlaylistByName(playlistName.Trim());
                 _view.ClearNewPlaylistName();
-                await ReloadSelectedPlaylistTracksAsync();
+                await ReloadPlaylistsAsync();
             }
+            _view.ShowMessage(result.Message);
         });
     }
 
@@ -182,31 +193,45 @@ public class MainPresenter
         });
     }
 
-    public async Task PlayPreviewAsync()
+    public async Task PlaySelectedQueueTrackAsync()
     {
-        await ExecuteSerializedAsync(async () =>
+        var tracks = await _musicLibraryService.SearchTracksAsync(
+            album: _view.AlbumFilter, genre: _view.GenreFilter,
+            title: _view.TitleFilter, artist: _view.ArtistFilter);
+
+        _currentQueue = tracks.ToList();
+        _currentIndex = _currentQueue.FindIndex(t => t.Id == _view.SelectedTrackId);
+
+        if (_currentIndex != -1) _view.PlayTrack(_currentQueue[_currentIndex]);
+    }
+
+    // Когда кликают на трек внутри ПЛЕЙЛИСТА
+    public async Task PlaySelectedPlaylistTrackAsync()
+    {
+        if (!_view.SelectedPlaylistId.HasValue) return;
+
+        _currentQueue = (await _musicLibraryService.GetPlaylistTracksAsync(_view.SelectedPlaylistId.Value)).ToList();
+        _currentIndex = _currentQueue.FindIndex(t => t.Id == _view.SelectedPlaylistTrackId);
+
+        if (_currentIndex != -1) _view.PlayTrack(_currentQueue[_currentIndex]);
+    }
+
+    // Когда жмут кнопку "Прослушать плейлист"
+    public async Task StartPlaylistPlaybackAsync()
+    {
+        if (!_view.SelectedPlaylistId.HasValue)
         {
-            if (!_view.SelectedTrackId.HasValue)
-            {
-                _view.ShowMessage("Выберите трек для прослушивания.", "Ошибка");
-                return;
-            }
+            _view.ShowMessage("Сначала выберите плейлист слева.");
+            return;
+        }
 
-            var tracks = await _musicLibraryService.SearchTracksAsync(
-                query: null,
-                album: _view.AlbumFilter,
-                genre: _view.GenreFilter,
-                title: _view.TitleFilter,
-                artist: _view.ArtistFilter);
-            var selected = tracks.FirstOrDefault(x => x.Id == _view.SelectedTrackId.Value);
-            if (selected is null || string.IsNullOrWhiteSpace(selected.PreviewUrl))
-            {
-                _view.ShowMessage("Для этого трека нет preview-ссылки.", "Информация");
-                return;
-            }
+        _currentQueue = (await _musicLibraryService.GetPlaylistTracksAsync(_view.SelectedPlaylistId.Value)).ToList();
+        if (!_currentQueue.Any()) return;
 
-            _view.PlayPreview(selected.PreviewUrl, $"{selected.Artist} - {selected.Title}");
-        });
+        // Если режим "Снизу вверх", начинаем с конца
+        _currentIndex = (_view.CurrentMode == PlaybackMode.Reverse) ? _currentQueue.Count - 1 : 0;
+
+        _view.PlayTrack(_currentQueue[_currentIndex]);
     }
 
     private async Task ReloadTracksAsync()
@@ -249,5 +274,29 @@ public class MainPresenter
         {
             _operationLock.Release();
         }
+    }
+    
+    public void OnTrackFinished()
+    {
+        if (_currentQueue.Count == 0) return;
+
+        switch (_view.CurrentMode)
+        {
+            case PlaybackMode.Normal:
+                _currentIndex++;
+                break;
+            case PlaybackMode.Reverse:
+                _currentIndex--;
+                break;
+            case PlaybackMode.Random:
+                _currentIndex = _random.Next(0, _currentQueue.Count);
+                break;
+        }
+
+        if (_currentIndex >= _currentQueue.Count) _currentIndex = 0;
+        if (_currentIndex < 0) _currentIndex = _currentQueue.Count - 1;
+
+        var nextTrack = _currentQueue[_currentIndex];
+        _view.PlayTrack(nextTrack);
     }
 }

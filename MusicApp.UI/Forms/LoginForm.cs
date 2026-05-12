@@ -14,7 +14,8 @@ public class LoginForm : Form, ILoginView
     private readonly TextBox _txtUsername;
     private readonly TextBox _txtPassword;
 
-    public LoginForm(AuthService authService, AdminCatalogService adminCatalogService, MusicLibraryService musicLibraryService)
+    public LoginForm(AuthService authService, AdminCatalogService adminCatalogService,
+        MusicLibraryService musicLibraryService)
     {
         _authService = authService;
         _adminCatalogService = adminCatalogService;
@@ -23,14 +24,13 @@ public class LoginForm : Form, ILoginView
 
         Text = "Music App";
         Width = 460;
-        Height = 400;
+        Height = 520;
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedSingle;
         MaximizeBox = false;
         BackColor = AppleMusicTheme.Background;
         ForeColor = AppleMusicTheme.TextPrimary;
 
-        // ── Logo / title ──
         var logo = new Label
         {
             Text = "♫",
@@ -48,12 +48,11 @@ public class LoginForm : Form, ILoginView
             Font = new Font("Segoe UI", 18f, FontStyle.Bold),
             ForeColor = AppleMusicTheme.TextPrimary,
             Dock = DockStyle.Top,
-            Height = 38,
+            Height = 45,
             TextAlign = ContentAlignment.MiddleCenter,
             BackColor = Color.Transparent
         };
 
-        // ── Form panel ──
         var panel = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -62,22 +61,44 @@ public class LoginForm : Form, ILoginView
             RowCount = 7,
             BackColor = AppleMusicTheme.Background
         };
-        for (var i = 0; i < 7; i++)
-            panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
+
+        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
+        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
+        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 55));
+        panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         panel.Controls.Add(MkLabel("Логин"), 0, 0);
-        _txtUsername = new TextBox { Dock = DockStyle.Fill, BackColor = AppleMusicTheme.Surface, ForeColor = AppleMusicTheme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
+        _txtUsername = new TextBox
+        {
+            Dock = DockStyle.Fill,
+            BackColor = AppleMusicTheme.Surface,
+            ForeColor = AppleMusicTheme.TextPrimary,
+            BorderStyle = BorderStyle.FixedSingle,
+            Font = new Font("Segoe UI", 12f)
+        };
         panel.Controls.Add(_txtUsername, 0, 1);
 
         panel.Controls.Add(MkLabel("Пароль"), 0, 2);
-        _txtPassword = new TextBox { Dock = DockStyle.Fill, UseSystemPasswordChar = true, BackColor = AppleMusicTheme.Surface, ForeColor = AppleMusicTheme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
+        _txtPassword = new TextBox
+        {
+            Dock = DockStyle.Fill,
+            UseSystemPasswordChar = true,
+            BackColor = AppleMusicTheme.Surface,
+            ForeColor = AppleMusicTheme.TextPrimary,
+            BorderStyle = BorderStyle.FixedSingle,
+            Font = new Font("Segoe UI", 12f)
+        };
         panel.Controls.Add(_txtPassword, 0, 3);
 
         var btnLogin = new Button
         {
             Text = "Войти",
             Dock = DockStyle.Fill,
-            Height = 36,
+            Height = 40,
+            Margin = new Padding(0, 10, 0, 10),
             BackColor = AppleMusicTheme.Accent,
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat,
@@ -92,10 +113,34 @@ public class LoginForm : Form, ILoginView
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.LeftToRight,
             AutoSize = true,
-            BackColor = AppleMusicTheme.Background
+            BackColor = AppleMusicTheme.Background,
+            Margin = new Padding(0, 5, 0, 5)
         };
-        var btnRegister = new Button { Text = "Регистрация", Width = 150, Height = 30, BackColor = AppleMusicTheme.SurfaceAlt, ForeColor = AppleMusicTheme.TextPrimary, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand };
-        var btnRecover = new Button { Text = "Забыли пароль?", Width = 160, Height = 30, BackColor = AppleMusicTheme.SurfaceAlt, ForeColor = AppleMusicTheme.TextSecondary, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand };
+
+        var btnRegister = new Button
+        {
+            Text = "Регистрация",
+            Width = 130,
+            Height = 35,
+            BackColor = AppleMusicTheme.SurfaceAlt,
+            ForeColor = AppleMusicTheme.TextPrimary,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand,
+            Font = new Font("Segoe UI", 9f)
+        };
+
+        var btnRecover = new Button
+        {
+            Text = "Забыли пароль?",
+            Width = 150,
+            Height = 35,
+            BackColor = AppleMusicTheme.SurfaceAlt,
+            ForeColor = AppleMusicTheme.TextSecondary,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand,
+            Font = new Font("Segoe UI", 9f)
+        };
+
         btnRegister.FlatAppearance.BorderSize = 0;
         btnRecover.FlatAppearance.BorderSize = 0;
         altButtons.Controls.AddRange([btnRegister, btnRecover]);
@@ -105,6 +150,7 @@ public class LoginForm : Form, ILoginView
         {
             Text = "demo: admin / admin123   •   user / user123",
             AutoSize = true,
+            Padding = new Padding(0, 10, 0, 0),
             ForeColor = AppleMusicTheme.TextSecondary,
             Font = new Font("Segoe UI", 8f)
         };
@@ -118,7 +164,6 @@ public class LoginForm : Form, ILoginView
         btnRegister.Click += (_, _) => _presenter.Register();
         btnRecover.Click += (_, _) => _presenter.RecoverPassword();
 
-        // allow Enter key to login
         AcceptButton = btnLogin;
     }
 
@@ -162,6 +207,7 @@ public class LoginForm : Form, ILoginView
         AutoSize = true,
         ForeColor = AppleMusicTheme.TextSecondary,
         BackColor = Color.Transparent,
-        Font = new Font("Segoe UI", 9f)
+        Font = new Font("Segoe UI", 9f),
+        TextAlign = ContentAlignment.BottomLeft
     };
 }

@@ -119,7 +119,7 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<PlaylistTrack>(entity =>
         {
-            entity.HasKey(x => new { x.PlaylistId, x.TrackId });
+            entity.HasKey(x => x.Id);
 
             entity.HasOne(x => x.Playlist)
                 .WithMany(x => x.PlaylistTracks)

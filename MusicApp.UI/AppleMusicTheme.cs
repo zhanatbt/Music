@@ -10,14 +10,14 @@ public static class AppleMusicTheme
     public static readonly Color SurfaceAlt = Color.FromArgb(42, 42, 42);
     public static readonly Color Accent = Color.FromArgb(252, 60, 68);
     public static readonly Color AccentHover = Color.FromArgb(220, 40, 50);
-    public static readonly Color TextPrimary = Color.FromArgb(255, 255, 255);
+    public static readonly Color TextPrimary = Color.White;
     public static readonly Color TextSecondary = Color.FromArgb(153, 153, 153);
     public static readonly Color Border = Color.FromArgb(58, 58, 60);
 
     public static void Apply(Form form)
     {
         form.BackColor = Background;
-        form.ForeColor = TextPrimary;
+        form.Font = new Font("Segoe UI", 10f, FontStyle.Regular);
         ApplyToControls(form.Controls);
     }
 
@@ -110,12 +110,16 @@ public static class AppleMusicTheme
         g.BackgroundColor = Surface;
         g.GridColor = Border;
         g.BorderStyle = BorderStyle.None;
-        g.EnableHeadersVisualStyles = false;
-
-        g.ColumnHeadersDefaultCellStyle.BackColor = SurfaceAlt;
+         g.EnableHeadersVisualStyles = false;
+    g.ScrollBars = ScrollBars.Both;
+        g.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
+        g.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+        g.RowTemplate.Height = 40;
+    
+        g.ColumnHeadersDefaultCellStyle.BackColor = Background;
         g.ColumnHeadersDefaultCellStyle.ForeColor = TextSecondary;
-        g.ColumnHeadersDefaultCellStyle.SelectionBackColor = SurfaceAlt;
-        g.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+        g.ColumnHeadersDefaultCellStyle.SelectionBackColor = Background;
+        g.ColumnHeadersHeight = 45;
 
         g.DefaultCellStyle.BackColor = Surface;
         g.DefaultCellStyle.ForeColor = TextPrimary;
@@ -123,11 +127,6 @@ public static class AppleMusicTheme
         g.DefaultCellStyle.SelectionForeColor = TextPrimary;
 
         g.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(24, 24, 24);
-        g.AlternatingRowsDefaultCellStyle.ForeColor = TextPrimary;
-        g.AlternatingRowsDefaultCellStyle.SelectionBackColor = Accent;
-
-        g.RowHeadersDefaultCellStyle.BackColor = SurfaceAlt;
-        g.RowHeadersDefaultCellStyle.ForeColor = TextPrimary;
-        g.RowHeadersDefaultCellStyle.SelectionBackColor = Accent;
+        g.AlternatingRowsDefaultCellStyle.ForeColor = Color.White;
     }
 }

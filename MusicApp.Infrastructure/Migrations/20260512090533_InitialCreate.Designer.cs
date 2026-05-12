@@ -12,8 +12,8 @@ using MusicApp.Infrastructure.Data;
 namespace MusicApp.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260512063247_Initial")]
-    partial class Initial
+    [Migration("20260512090533_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -145,16 +145,24 @@ namespace MusicApp.Infrastructure.Migrations
 
             modelBuilder.Entity("MusicApp.Domain.Entities.PlaylistTrack", b =>
                 {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AddedAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("PlaylistId")
                         .HasColumnType("int");
 
                     b.Property<int>("TrackId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("AddedAtUtc")
-                        .HasColumnType("datetime2");
+                    b.HasKey("Id");
 
-                    b.HasKey("PlaylistId", "TrackId");
+                    b.HasIndex("PlaylistId");
 
                     b.HasIndex("TrackId");
 

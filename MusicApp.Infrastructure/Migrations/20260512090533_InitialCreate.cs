@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace MusicApp.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class Initial : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -142,13 +142,15 @@ namespace MusicApp.Infrastructure.Migrations
                 name: "PlaylistTracks",
                 columns: table => new
                 {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     PlaylistId = table.Column<int>(type: "int", nullable: false),
                     TrackId = table.Column<int>(type: "int", nullable: false),
                     AddedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_PlaylistTracks", x => new { x.PlaylistId, x.TrackId });
+                    table.PrimaryKey("PK_PlaylistTracks", x => x.Id);
                     table.ForeignKey(
                         name: "FK_PlaylistTracks_Playlists_PlaylistId",
                         column: x => x.PlaylistId,
@@ -244,6 +246,11 @@ namespace MusicApp.Infrastructure.Migrations
                 name: "IX_Playlists_UserId",
                 table: "Playlists",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PlaylistTracks_PlaylistId",
+                table: "PlaylistTracks",
+                column: "PlaylistId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_PlaylistTracks_TrackId",

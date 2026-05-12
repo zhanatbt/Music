@@ -1,6 +1,7 @@
 ﻿using AxWMPLib;
 using MusicApp.Application.DTOs;
 using MusicApp.Application.Services;
+using MusicApp.Domain.Common;
 using MusicApp.UI.Presenters;
 
 namespace MusicApp.UI.Forms;
@@ -23,6 +24,8 @@ public class MainForm : Form, IMainView
     private DataGridView _gridPlaylistTracks = null!;
     private readonly Label _lblNowPlaying;
     private readonly AxWindowsMediaPlayer _player;
+    private ComboBox _cmbPlaybackMode;
+    public event Action? TrackFinished;
 
     public MainForm(MusicLibraryService musicLibraryService, UserSessionDto session)
     {
@@ -30,83 +33,122 @@ public class MainForm : Form, IMainView
 
         Text = $"Music App - Пользователь {session.Username}";
         Width = 1280;
-        Height = 760;
+        Height = 820;
         StartPosition = FormStartPosition.CenterParent;
 
-        var header = new Panel { Dock = DockStyle.Top, Height = 118, Padding = new Padding(12) };
+        var header = new Panel { Dock = DockStyle.Top, Height = 120, Padding = new Padding(12) };
 
-        var titleLabel = new Label { Text = "Название", Left = 12, Top = 14, Width = 80 };
-        _txtTitleFilter = new TextBox { Left = 98, Top = 12, Width = 220 };
+        // 1. Поля фильтров (Лево)
+        header.Controls.Add(MkLabel("Название").WithPos(12, 14));
+        _txtTitleFilter = new TextBox { Left = 98, Top = 12, Width = 200 };
+        header.Controls.Add(_txtTitleFilter);
 
-        var artistLabel = new Label { Text = "Исполнитель", Left = 330, Top = 14, Width = 90 };
-        _txtArtistFilter = new TextBox { Left = 425, Top = 12, Width = 220 };
+        header.Controls.Add(MkLabel("Исполнитель").WithPos(310, 14));
+        _txtArtistFilter = new TextBox { Left = 410, Top = 12, Width = 200 };
+        header.Controls.Add(_txtArtistFilter);
 
-        var albumLabel = new Label { Text = "Альбом", Left = 12, Top = 48, Width = 80 };
-        _txtAlbumFilter = new TextBox { Left = 98, Top = 46, Width = 220 };
+        header.Controls.Add(MkLabel("Альбом").WithPos(12, 48));
+        _txtAlbumFilter = new TextBox { Left = 98, Top = 46, Width = 200 };
+        header.Controls.Add(_txtAlbumFilter);
 
-        var genreLabel = new Label { Text = "Жанр", Left = 330, Top = 48, Width = 90 };
-        _txtGenreFilter = new TextBox { Left = 425, Top = 46, Width = 220 };
+        header.Controls.Add(MkLabel("Жанр").WithPos(310, 48));
+        _txtGenreFilter = new TextBox { Left = 410, Top = 46, Width = 200 };
+        header.Controls.Add(_txtGenreFilter);
 
-        var btnSearch = new Button { Text = "Поиск", Left = 660, Top = 22, Width = 130, Height = 36 };
-        var btnReset = new Button { Text = "Сбросить", Left = 800, Top = 22, Width = 130, Height = 36 };
-        var btnPlay = new Button { Text = "Слушать preview", Left = 940, Top = 22, Width = 170, Height = 36 };
-        var btnAddToPlaylist = new Button { Text = "Добавить в плейлист", Left = 940, Top = 64, Width = 250, Height = 36 };
+        // 2. Кнопки поиска (Центр)
+        var btnSearch = new Button { Text = "🔍 Поиск", Left = 630, Top = 12, Width = 110, Height = 30 };
+        var btnReset = new Button { Text = "✕ Сброс", Left = 630, Top = 46, Width = 110, Height = 30 };
+        header.Controls.AddRange([btnSearch, btnReset]);
 
-        header.Controls.AddRange([titleLabel, _txtTitleFilter, artistLabel, _txtArtistFilter, albumLabel, _txtAlbumFilter, genreLabel, _txtGenreFilter, btnSearch, btnReset, btnPlay, btnAddToPlaylist]);
+        // 3. Управление плейлистом и режимы (Право)
+        // Устанавливаем координаты так, чтобы ничего не накладывалось
+        var lblMode = MkLabel("Режим:").WithPos(760, 14);
+        _cmbPlaybackMode = new ComboBox
+        {
+            Left = 760,
+            Top = 36,
+            Width = 150,
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            BackColor = Color.FromArgb(30, 30, 30),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat
+        };
+        _cmbPlaybackMode.Items.AddRange(["Сверху вниз", "Снизу вверх", "Рандом"]);
+        _cmbPlaybackMode.SelectedIndex = 0;
 
+        var btnPlayPlaylist = new Button
+        {
+            Text = "▶ Прослушать плейлист",
+            Left = 925,
+            Top = 12,
+            Width = 160,
+            Height = 54,
+            BackColor = AppleMusicTheme.Accent,
+            Font = new Font("Segoe UI", 9f, FontStyle.Bold)
+        };
+
+        var btnAddToPlaylist = new Button
+        {
+            Text = "➕ Добавить в плейлист",
+            Left = 1095,
+            Top = 12,
+            Width = 165,
+            Height = 54
+        };
+
+        header.Controls.AddRange([lblMode, _cmbPlaybackMode, btnPlayPlaylist, btnAddToPlaylist]);
+
+        // --- ПАНЕЛИ И ГРИДЫ ---
         var leftSplit = new SplitContainer
         {
             Dock = DockStyle.Left,
             Width = 420,
             Orientation = Orientation.Horizontal,
-            SplitterDistance = 190,
-            Panel1MinSize = 150,
-            Panel2MinSize = 320
+            SplitterDistance = 220
         };
-
-        leftSplit.Panel1.Padding = new Padding(12, 12, 6, 6);
-        leftSplit.Panel2.Padding = new Padding(12, 6, 6, 12);
         leftSplit.Panel1.Controls.Add(BuildPlaylistsPanel());
         leftSplit.Panel2.Controls.Add(BuildPlaylistTracksPanel());
 
         _gridTracks = new DataGridView
         {
             Dock = DockStyle.Fill,
-            ReadOnly = false,
+            ReadOnly = true,
             AutoGenerateColumns = false,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-            MultiSelect = false,
-            AllowUserToAddRows = false
+            AllowUserToAddRows = false,
+            RowHeadersVisible = false,
+            ScrollBars = ScrollBars.Both
         };
         _gridTracks.Columns.Add(new DataGridViewTextBoxColumn
         {
-            DataPropertyName = nameof(TrackDto.Artist),
+            DataPropertyName = "Artist",
             HeaderText = "Исполнитель",
-            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-            FillWeight = 28
+            Width = 150
         });
         _gridTracks.Columns.Add(new DataGridViewTextBoxColumn
         {
-            DataPropertyName = nameof(TrackDto.Title),
+            DataPropertyName = "Title",
             HeaderText = "Название",
-            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-            FillWeight = 32
+            Width = 200
         });
         _gridTracks.Columns.Add(new DataGridViewTextBoxColumn
         {
-            DataPropertyName = nameof(TrackDto.Genre),
+            DataPropertyName = "Genre",
             HeaderText = "Жанр",
-            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-            FillWeight = 20
+            Width = 120
         });
         _gridTracks.Columns.Add(new DataGridViewTextBoxColumn
         {
-            DataPropertyName = nameof(TrackDto.Category),
-            HeaderText = "Категория",
-            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-            FillWeight = 20
+            DataPropertyName = "Album",
+            HeaderText = "Альбом",
+            Width = 150
         });
-        _gridTracks.DataSource = _tracksSource;
+        _gridTracks.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            DataPropertyName = "Category",
+            HeaderText = "Категория",
+            Width = 120
+        });
 
         _player = new AxWindowsMediaPlayer();
         ((System.ComponentModel.ISupportInitialize)_player).BeginInit();
@@ -114,45 +156,53 @@ public class MainForm : Form, IMainView
         _player.Dock = DockStyle.Fill;
         ((System.ComponentModel.ISupportInitialize)_player).EndInit();
 
-        var playerPanel = new Panel { Dock = DockStyle.Bottom, Height = 132, Padding = new Padding(12) };
-        _lblNowPlaying = new Label
-        {
-            Dock = DockStyle.Top,
-            Height = 24,
-            Text = "Сейчас играет: ничего не выбрано"
-        };
+        var playerPanel = new Panel { Dock = DockStyle.Bottom, Height = 140, Padding = new Padding(12) };
+        _lblNowPlaying = new Label { Dock = DockStyle.Top, Height = 25, ForeColor = Color.White, Text = "Остановлено" };
         playerPanel.Controls.Add(_player);
         playerPanel.Controls.Add(_lblNowPlaying);
 
+        // Добавляем всё на форму
         Controls.Add(_gridTracks);
         Controls.Add(playerPanel);
         Controls.Add(leftSplit);
         Controls.Add(header);
 
+        // --- СОБЫТИЯ ---
         Load += async (_, _) => await _presenter.LoadAsync();
         btnSearch.Click += async (_, _) => await _presenter.SearchAsync();
-        btnReset.Click += async (_, _) =>
-        {
-            _txtTitleFilter.Clear();
-            _txtArtistFilter.Clear();
-            _txtAlbumFilter.Clear();
-            _txtGenreFilter.Clear();
+        btnReset.Click += async (_, _) => {
+            _txtTitleFilter.Clear(); _txtArtistFilter.Clear();
+            _txtAlbumFilter.Clear(); _txtGenreFilter.Clear();
             await _presenter.SearchAsync();
         };
         btnAddToPlaylist.Click += async (_, _) => await _presenter.AddSelectedTrackToPlaylistAsync();
-        btnPlay.Click += async (_, _) => await _presenter.PlayPreviewAsync();
+        btnPlayPlaylist.Click += async (_, _) => await _presenter.StartPlaylistPlaybackAsync();
+
+        // Двойные клики по таблицам
+        _gridTracks.CellDoubleClick += async (s, e) => {
+            if (e.RowIndex >= 0) await _presenter.PlaySelectedQueueTrackAsync();
+        };
+        _gridPlaylistTracks.CellDoubleClick += async (s, e) => {
+            if (e.RowIndex >= 0) await _presenter.PlaySelectedPlaylistTrackAsync();
+        };
+
+        // Инициализация событий плеера (Action? TrackFinished)
+        InitializePlaybackEvents();
+
+        // Применяем визуальную тему (она покрасит Label в белый)
+        AppleMusicTheme.Apply(this);
     }
 
     private Control BuildPlaylistsPanel()
     {
         var panel = new Panel { Dock = DockStyle.Fill };
-
-        var topPanel = new Panel { Dock = DockStyle.Top, Height = 54 };
+        var topPanel = new Panel { Dock = DockStyle.Top, Height = 50 };
         var titleLabel = new Label
         {
             Text = "Плейлисты",
+            Font = new Font("Segoe UI", 10f, FontStyle.Bold),
             Dock = DockStyle.Top,
-            Height = 24
+            Height = 25
         };
         var hintLabel = new Label
         {
@@ -162,15 +212,33 @@ public class MainForm : Form, IMainView
         topPanel.Controls.Add(hintLabel);
         topPanel.Controls.Add(titleLabel);
 
-        var bottomPanel = new Panel { Dock = DockStyle.Bottom, Height = 82 };
-        _txtNewPlaylist = new TextBox { Dock = DockStyle.Top };
-        var btnCreatePlaylist = new Button { Text = "Создать плейлист", Dock = DockStyle.Bottom, Height = 30 };
-        var btnDeletePlaylist = new Button { Text = "Удалить пустой плейлист", Dock = DockStyle.Bottom, Height = 30 };
+        var bottomPanel = new Panel { Dock = DockStyle.Bottom, Height = 120, Padding = new Padding(5) };
+        _txtNewPlaylist = new TextBox
+        {
+            Dock = DockStyle.Top,
+            PlaceholderText = "Введите название...",
+            Margin = new Padding(0, 0, 0, 10)
+        };
+        var btnCreatePlaylist = new Button
+        {
+            Text = "➕ Создать плейлист",
+            Dock = DockStyle.Top,
+            Height = 35,
+            BackColor = AppleMusicTheme.Accent
+        };
+        var btnDeletePlaylist = new Button
+        {
+            Text = "🗑 Удалить выбранный",
+            Dock = DockStyle.Top,
+            Height = 35,
+            Margin = new Padding(0, 5, 0, 0)
+        };
         btnCreatePlaylist.Click += async (_, _) => await _presenter.CreatePlaylistAsync();
         btnDeletePlaylist.Click += async (_, _) => await _presenter.DeleteSelectedPlaylistAsync();
-        bottomPanel.Controls.Add(_txtNewPlaylist);
         bottomPanel.Controls.Add(btnDeletePlaylist);
+        bottomPanel.Controls.Add(new Panel { Height = 5, Dock = DockStyle.Top });
         bottomPanel.Controls.Add(btnCreatePlaylist);
+        bottomPanel.Controls.Add(_txtNewPlaylist);
 
         _gridPlaylists = new DataGridView
         {
@@ -180,8 +248,6 @@ public class MainForm : Form, IMainView
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             MultiSelect = false,
             AllowUserToAddRows = false,
-            AllowUserToDeleteRows = false,
-            AllowUserToResizeRows = false,
             RowHeadersVisible = false,
             DataSource = _playlistsSource
         };
@@ -234,7 +300,8 @@ public class MainForm : Form, IMainView
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             MultiSelect = false,
             AllowUserToAddRows = false,
-            DataSource = _playlistTracksSource
+            DataSource = _playlistTracksSource,
+            ScrollBars = ScrollBars.Both
         };
         _gridPlaylistTracks.Columns.Add(new DataGridViewTextBoxColumn
         {
@@ -289,6 +356,7 @@ public class MainForm : Form, IMainView
     public void SetTracks(IReadOnlyList<TrackDto> tracks)
     {
         _tracksSource.DataSource = tracks.ToList();
+        _gridTracks.DataSource = _tracksSource;
         EnsureSelectColumn(_gridTracks, "TrackSelectColumn");
     }
 
@@ -296,23 +364,22 @@ public class MainForm : Form, IMainView
     {
         _suppressPlaylistSelectionChanged = true;
         _playlistsSource.DataSource = playlists.ToList();
+        _gridPlaylists.DataSource = _playlistsSource;
         _suppressPlaylistSelectionChanged = false;
     }
 
     public void SetPlaylistTracks(IReadOnlyList<TrackDto> tracks)
     {
         _playlistTracksSource.DataSource = tracks.ToList();
+        _gridPlaylistTracks.DataSource = _playlistTracksSource;
         EnsureSelectColumn(_gridPlaylistTracks, "PlaylistSelectColumn");
     }
 
     public void AddPlaylist(PlaylistDto playlist)
     {
-        _suppressPlaylistSelectionChanged = true;
-        var playlists = (_playlistsSource.DataSource as List<PlaylistDto>) ?? [];
+        var playlists = (_playlistsSource.DataSource as List<PlaylistDto>) ?? new List<PlaylistDto>();
         playlists.Add(playlist);
-        _playlistsSource.DataSource = null;
-        _playlistsSource.DataSource = playlists;
-        _suppressPlaylistSelectionChanged = false;
+        SetPlaylists(playlists);
     }
 
     public void SelectPlaylistByName(string playlistName)
@@ -372,7 +439,7 @@ public class MainForm : Form, IMainView
             .Where(row => row.DataBoundItem is TrackDto &&
                           row.Cells[selectColumnName].Value is bool isChecked &&
                           isChecked)
-            .Select(row => ((TrackDto)row.DataBoundItem!).Id)
+            .Select(row => ((TrackDto)row.DataBoundItem).Id)
             .ToList();
     }
 
@@ -399,4 +466,39 @@ public class MainForm : Form, IMainView
             }
         }
     }
+
+    public PlaybackMode CurrentMode => _cmbPlaybackMode.SelectedIndex switch {
+        1 => PlaybackMode.Reverse,
+        2 => PlaybackMode.Random,
+        _ => PlaybackMode.Normal
+    };
+    
+    private void InitializePlaybackEvents()
+    {
+        _player.PlayStateChange += (s, e) => {
+            // 8 = MediaEnded (трек завершен)
+            if (e.newState == 8) 
+            {
+                // Вызываем событие, на которое подписан Презентер
+                this.BeginInvoke(() => TrackFinished?.Invoke());
+            }
+        };
+    }
+
+    // Реализация метода интерфейса
+    public void PlayTrack(TrackDto track)
+    {
+        if (string.IsNullOrEmpty(track.PreviewUrl)) return;
+        _lblNowPlaying.Text = $"▶ Сейчас играет: {track.Artist} - {track.Title}";
+        _player.URL = track.PreviewUrl;
+        _player.Ctlcontrols.play();
+    }
+
+    private static Label MkLabel(string text) => 
+        new Label { Text = text, AutoSize = true, ForeColor = Color.White };
+}
+
+file static class LabelExt 
+{
+    public static Label WithPos(this Label l, int x, int y) { l.Left = x; l.Top = y; return l; }
 }

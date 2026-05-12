@@ -10,6 +10,4 @@ public class TrackDto
     public string Category { get; init; } = string.Empty;
     public int DurationSeconds { get; init; }
     public string? PreviewUrl { get; set; }
-    public bool IsLocalFile { get; init; }
-    public string SourceType { get; init; } = string.Empty;
 }

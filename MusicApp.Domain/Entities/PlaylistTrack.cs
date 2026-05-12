@@ -2,6 +2,7 @@ namespace MusicApp.Domain.Entities;
 
 public class PlaylistTrack
 {
+    public int Id { get; set; } 
     public int PlaylistId { get; set; }
     public int TrackId { get; set; }
     public DateTime AddedAtUtc { get; set; } = DateTime.UtcNow;

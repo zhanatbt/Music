@@ -1,4 +1,5 @@
 using MusicApp.Application.DTOs;
+using MusicApp.Domain.Common;
 
 namespace MusicApp.UI.Presenters;
 
@@ -22,4 +23,7 @@ public interface IMainView
     void ClearNewPlaylistName();
     void PlayPreview(string previewUrl, string trackTitle);
     void ShowMessage(string message, string title = "Music App");
+    PlaybackMode CurrentMode { get; }
+    void PlayTrack(TrackDto track);
+    event Action? TrackFinished; 
 }

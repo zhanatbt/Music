@@ -142,16 +142,24 @@ namespace MusicApp.Infrastructure.Migrations
 
             modelBuilder.Entity("MusicApp.Domain.Entities.PlaylistTrack", b =>
                 {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AddedAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("PlaylistId")
                         .HasColumnType("int");
 
                     b.Property<int>("TrackId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("AddedAtUtc")
-                        .HasColumnType("datetime2");
+                    b.HasKey("Id");
 
-                    b.HasKey("PlaylistId", "TrackId");
+                    b.HasIndex("PlaylistId");
 
                     b.HasIndex("TrackId");
 
