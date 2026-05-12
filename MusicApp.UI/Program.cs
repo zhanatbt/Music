@@ -41,12 +41,8 @@ internal static class Program
 
         var passwordHasher = new BCryptPasswordHasher();
         var passwordValidator = new PasswordValidator();
-        var httpClient = new HttpClient
-        {
-            BaseAddress = new Uri("https://api.deezer.com/")
-        };
 
-        var fileStorageService = new LocalFileStorageService(httpClient, AppContext.BaseDirectory);
+        var fileStorageService = new LocalFileStorageService(AppContext.BaseDirectory);
         var authService = new AuthService(userRepository, passwordHasher, passwordValidator);
         var adminCatalogService = new AdminCatalogService(
             genreRepository,
@@ -56,7 +52,6 @@ internal static class Program
             albumRepository,
             userRepository,
             playlistRepository,
-            new DeezerClient(httpClient),
             new TagLibAudioMetadataReader(),
             fileStorageService);
         var musicLibraryService = new MusicLibraryService(trackRepository, playlistRepository, fileStorageService);

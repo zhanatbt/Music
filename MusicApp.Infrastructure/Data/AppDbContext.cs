@@ -61,8 +61,6 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Track>(entity =>
         {
             entity.Property(x => x.Title).HasMaxLength(150).IsRequired();
-            entity.Property(x => x.SourceType).HasMaxLength(50).IsRequired();
-            entity.Property(x => x.DeezerId).HasMaxLength(50);
             entity.Property(x => x.PreviewUrl).HasMaxLength(500);
 
             entity.HasOne(x => x.Album)

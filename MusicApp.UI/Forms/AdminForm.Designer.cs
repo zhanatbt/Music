@@ -10,7 +10,6 @@ partial class AdminForm
     private TabPage _categoriesTab = null!;
     private TabPage _genresTab = null!;
     private TabPage _artistsTab = null!;
-    private TabPage _deezerTab = null!;
     private Panel _playerHost = null!;
 
     protected override void Dispose(bool disposing)
@@ -33,7 +32,6 @@ partial class AdminForm
         _categoriesTab = new TabPage();
         _genresTab = new TabPage();
         _artistsTab = new TabPage();
-        _deezerTab = new TabPage();
         _playerHost = new Panel();
         SuspendLayout();
 
@@ -77,19 +75,12 @@ partial class AdminForm
         _artistsTab.UseVisualStyleBackColor = true;
         _artistsTab.Controls.Add(BuildArtistCatalogLayout());
 
-        _deezerTab.Name = "_deezerTab";
-        _deezerTab.Padding = new Padding(3);
-        _deezerTab.Text = "Импорт Deezer";
-        _deezerTab.UseVisualStyleBackColor = true;
-        _deezerTab.Controls.Add(BuildDeezerLayout());
-
         _tabControl.Controls.Add(_manageTab);
         _tabControl.Controls.Add(_tracksTab);
         _tabControl.Controls.Add(_usersTab);
         _tabControl.Controls.Add(_categoriesTab);
         _tabControl.Controls.Add(_genresTab);
         _tabControl.Controls.Add(_artistsTab);
-        _tabControl.Controls.Add(_deezerTab);
 
         _playerHost = (Panel)BuildPlayerPanel();
 

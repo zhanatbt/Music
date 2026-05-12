@@ -9,102 +9,83 @@ namespace MusicApp.UI.Forms;
 public partial class AdminForm : Form, IAdminView
 {
     private AdminPresenter? _presenter;
+
+    // BindingSources
     private readonly BindingSource _categoriesSource = new();
     private readonly BindingSource _tracksSource = new();
     private readonly BindingSource _usersSource = new();
     private readonly BindingSource _userPlaylistsSource = new();
     private readonly BindingSource _userPlaylistTracksSource = new();
-    private readonly BindingSource _deezerSource = new();
     private readonly BindingSource _categoryLookupSource = new();
     private readonly BindingSource _genreLookupSource = new();
     private readonly BindingSource _artistLookupSource = new();
+
+    // Selection state
     private readonly HashSet<string> _selectedGenreNames = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _selectedArtistNames = new(StringComparer.OrdinalIgnoreCase);
 
+    // Controls — manage tab
     private TextBox _txtTrackTitle = null!;
     private TextBox _txtAlbum = null!;
     private TextBox _txtAudioFilePath = null!;
-    private NumericUpDown _numDuration = null!;
+    private Label _lblDuration = null!; // shows auto-calculated duration
+    private int _durationSeconds;
     private CheckedListBox _clbArtists = null!;
     private CheckedListBox _clbGenres = null!;
     private ComboBox _cmbCategory = null!;
     private TextBox _txtArtistSearch = null!;
     private TextBox _txtGenreSearch = null!;
+
+    // Controls — tracks tab
     private TextBox _txtTrackSearchTitle = null!;
     private TextBox _txtTrackSearchArtist = null!;
     private TextBox _txtTrackSearchAlbum = null!;
     private TextBox _txtTrackSearchGenre = null!;
+    private DataGridView _gridTracks = null!;
+
+    // Controls — lookup tabs
     private TextBox _txtCategoryLookupSearch = null!;
     private TextBox _txtGenreLookupSearch = null!;
     private TextBox _txtArtistLookupSearch = null!;
-    private TextBox _txtUserSearch = null!;
     private TextBox _txtNewCategoryName = null!;
     private TextBox _txtNewGenreName = null!;
     private TextBox _txtNewArtistName = null!;
-    private TextBox _txtDeezerQuery = null!;
-    private DataGridView _gridDeezer = null!;
-    private DataGridView _gridTracks = null!;
     private DataGridView _gridCategoryLookup = null!;
     private DataGridView _gridGenreLookup = null!;
     private DataGridView _gridArtistLookup = null!;
+
+    // Controls — users tab
+    private TextBox _txtUserSearch = null!;
     private DataGridView _gridUsers = null!;
     private DataGridView _gridUserPlaylists = null!;
     private DataGridView _gridUserPlaylistTracks = null!;
+
+    // Player
     private Label _lblNowPlaying = null!;
     private AxWindowsMediaPlayer _player = null!;
-    private readonly List<DeezerTrackDto> _deezerResults = new();
+
+    // Misc state
+    private int? _editingTrackId;
+    private string? _importedGenreName;
+    private bool _suppressUserSelectionChanged;
+    private bool _suppressUserPlaylistSelectionChanged;
+
     private List<CategoryDto> _categoryLookupAll = [];
     private List<GenreDto> _genreLookupAll = [];
     private List<ArtistDto> _artistLookupAll = [];
     private List<GenreDto> _allGenres = [];
     private List<ArtistDto> _allArtists = [];
     private List<UserSessionDto> _allUsers = [];
-    private int? _editingTrackId;
-    private string? _importedGenreName;
-    private bool _suppressUserSelectionChanged;
-    private bool _suppressUserPlaylistSelectionChanged;
 
-    public AdminForm()
-    {
-        InitializeComponent();
-
-        if (IsInDesigner())
-        {
-            Text = "Music App - Admin Panel";
-        }
-    }
-
-    public AdminForm(AdminCatalogService catalogService, UserSessionDto session)
-        : this()
-    {
-        _presenter = new AdminPresenter(this, catalogService);
-
-        Text = $"Music App - Admin Panel ({session.Username})";
-        StartPosition = FormStartPosition.CenterParent;
-
-        Load += async (_, _) =>
-        {
-            if (_presenter is not null)
-            {
-                await _presenter.LoadAsync();
-            }
-        };
-    }
-
+    // ─── IAdminView properties ───────────────────────────────────────────────
     public string GenreName => SelectedGenreNames.FirstOrDefault() ?? _importedGenreName ?? string.Empty;
-    public IReadOnlyList<string> SelectedGenreNames
-    {
-        get => _selectedGenreNames.ToList();
-    }
+    public IReadOnlyList<string> SelectedGenreNames => _selectedGenreNames.ToList();
+    public IReadOnlyList<string> SelectedArtistNames => _selectedArtistNames.ToList();
     public string CategoryName => _cmbCategory.Text;
     public string TrackTitle => _txtTrackTitle.Text;
     public string ArtistName => SelectedArtistNames.FirstOrDefault() ?? string.Empty;
-    public IReadOnlyList<string> SelectedArtistNames
-    {
-        get => _selectedArtistNames.ToList();
-    }
     public string AlbumTitle => _txtAlbum.Text;
-    public int DurationSeconds => (int)_numDuration.Value;
+    public int DurationSeconds => _durationSeconds;
     public int? SelectedGenreId => _allGenres.FirstOrDefault(x => _selectedGenreNames.Contains(x.Name))?.Id;
     public int? SelectedCategoryId => (_cmbCategory.SelectedItem as CategoryDto)?.Id;
     public string TrackSearchTitle => _txtTrackSearchTitle.Text;
@@ -117,36 +98,46 @@ public partial class AdminForm : Form, IAdminView
     public string NewCategoryName => _txtNewCategoryName?.Text ?? string.Empty;
     public string NewGenreName => _txtNewGenreName?.Text ?? string.Empty;
     public string NewArtistName => _txtNewArtistName?.Text ?? string.Empty;
-    public int? SelectedCategoryLookupId => _gridCategoryLookup?.CurrentRow?.DataBoundItem is CategoryDto category ? category.Id : null;
-    public int? SelectedGenreLookupId => _gridGenreLookup?.CurrentRow?.DataBoundItem is GenreDto genre ? genre.Id : null;
-    public int? SelectedArtistLookupId => _gridArtistLookup?.CurrentRow?.DataBoundItem is ArtistDto artist ? artist.Id : null;
+    public int? SelectedCategoryLookupId => _gridCategoryLookup?.CurrentRow?.DataBoundItem is CategoryDto c ? c.Id : null;
+    public int? SelectedGenreLookupId => _gridGenreLookup?.CurrentRow?.DataBoundItem is GenreDto g ? g.Id : null;
+    public int? SelectedArtistLookupId => _gridArtistLookup?.CurrentRow?.DataBoundItem is ArtistDto a ? a.Id : null;
     public int? EditingTrackId => _editingTrackId;
-    public string DeezerQuery => _txtDeezerQuery.Text;
     public string? ImportedAudioFilePath => string.IsNullOrWhiteSpace(_txtAudioFilePath.Text) ? null : _txtAudioFilePath.Text;
-    public string? ImportedGenreName => _importedGenreName;
     public TrackDto? SelectedTrack => _gridTracks.CurrentRow?.DataBoundItem as TrackDto;
     public UserSessionDto? SelectedUser => _gridUsers?.CurrentRow?.DataBoundItem as UserSessionDto;
     public PlaylistDto? SelectedUserPlaylist => _gridUserPlaylists?.CurrentRow?.DataBoundItem as PlaylistDto;
-    public DeezerTrackDto? SelectedDeezerTrack => _gridDeezer.CurrentRow?.DataBoundItem as DeezerTrackDto;
-    public IReadOnlyList<DeezerTrackDto> SelectedDeezerTracks =>
-        _gridDeezer.Rows
-            .Cast<DataGridViewRow>()
-            .Where(row => row.Cells["SelectColumn"].Value is bool isChecked && isChecked)
-            .Select(row => row.DataBoundItem as DeezerTrackDto)
-            .Where(track => track is not null)
-            .Cast<DeezerTrackDto>()
-            .ToList();
-    public IReadOnlyList<DeezerTrackDto> AllDeezerTracks => _deezerResults;
 
+    // ─── Constructors ────────────────────────────────────────────────────────
+    public AdminForm()
+    {
+        InitializeComponent();
+        if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+            Text = "Music App - Admin Panel";
+    }
+
+    public AdminForm(AdminCatalogService catalogService, UserSessionDto session) : this()
+    {
+        _presenter = new AdminPresenter(this, catalogService);
+        Text = $"Music App — Admin ({session.Username})";
+        StartPosition = FormStartPosition.CenterParent;
+
+        AppleMusicTheme.Apply(this);
+
+        Load += async (_, _) =>
+        {
+            if (_presenter is not null) await _presenter.LoadAsync();
+        };
+    }
+
+    // ─── IAdminView methods ──────────────────────────────────────────────────
     public string? PickAudioFile()
     {
-        using var dialog = new OpenFileDialog
+        using var dlg = new OpenFileDialog
         {
-            Filter = "MP3 files (*.mp3)|*.mp3|Audio files (*.mp3;*.wav;*.flac)|*.mp3;*.wav;*.flac|All files (*.*)|*.*",
+            Filter = "Аудиофайлы (*.mp3;*.wav;*.flac)|*.mp3;*.wav;*.flac|Все файлы (*.*)|*.*",
             Title = "Выберите аудиофайл"
         };
-
-        return dialog.ShowDialog(this) == DialogResult.OK ? dialog.FileName : null;
+        return dlg.ShowDialog(this) == DialogResult.OK ? dlg.FileName : null;
     }
 
     public void ApplyAudioMetadata(AudioMetadataDto metadata)
@@ -155,19 +146,18 @@ public partial class AdminForm : Form, IAdminView
         _txtTrackTitle.Text = metadata.Title;
         _txtArtistSearch.Text = metadata.ArtistName;
         _txtAlbum.Text = metadata.AlbumTitle;
-        _numDuration.Value = Math.Min(_numDuration.Maximum, Math.Max(_numDuration.Minimum, metadata.DurationSeconds));
         _importedGenreName = metadata.GenreName;
+
+        _durationSeconds = metadata.DurationSeconds;
+        _lblDuration.Text = FormatDuration(_durationSeconds);
+
         TryCheckArtistByName(metadata.ArtistName);
     }
 
     public void TrySelectGenreByName(string? genreName)
     {
         _importedGenreName = genreName;
-        if (string.IsNullOrWhiteSpace(genreName))
-        {
-            return;
-        }
-
+        if (string.IsNullOrWhiteSpace(genreName)) return;
         _txtGenreSearch.Text = genreName;
         _selectedGenreNames.Add(genreName);
         ApplyGenreFilter(_txtGenreSearch.Text);
@@ -176,14 +166,14 @@ public partial class AdminForm : Form, IAdminView
     public void SetGenres(IReadOnlyList<GenreDto> genres)
     {
         _allGenres = genres.ToList();
-        _selectedGenreNames.RemoveWhere(name => _allGenres.All(genre => !string.Equals(genre.Name, name, StringComparison.OrdinalIgnoreCase)));
+        _selectedGenreNames.RemoveWhere(n => _allGenres.All(g => !string.Equals(g.Name, n, StringComparison.OrdinalIgnoreCase)));
         ApplyGenreFilter(_txtGenreSearch?.Text ?? string.Empty);
     }
 
     public void SetArtists(IReadOnlyList<ArtistDto> artists)
     {
         _allArtists = artists.ToList();
-        _selectedArtistNames.RemoveWhere(name => _allArtists.All(artist => !string.Equals(artist.Name, name, StringComparison.OrdinalIgnoreCase)));
+        _selectedArtistNames.RemoveWhere(n => _allArtists.All(a => !string.Equals(a.Name, n, StringComparison.OrdinalIgnoreCase)));
         ApplyArtistFilter(_txtArtistSearch?.Text ?? string.Empty);
     }
 
@@ -216,10 +206,7 @@ public partial class AdminForm : Form, IAdminView
     public void SetTracks(IReadOnlyList<TrackDto> tracks)
     {
         _tracksSource.DataSource = tracks;
-        if (_gridTracks is not null)
-        {
-            _gridTracks.DataSource = _tracksSource;
-        }
+        if (_gridTracks is not null) _gridTracks.DataSource = _tracksSource;
     }
 
     public void SetUsers(IReadOnlyList<UserSessionDto> users)
@@ -239,53 +226,21 @@ public partial class AdminForm : Form, IAdminView
     }
 
     public void SetSelectedUserPlaylistTracks(IReadOnlyList<TrackDto> tracks)
-    {
-        _userPlaylistTracksSource.DataSource = tracks.ToList();
-    }
+        => _userPlaylistTracksSource.DataSource = tracks.ToList();
 
-    public void SetDeezerResults(IReadOnlyList<DeezerTrackDto> tracks)
-    {
-        _deezerResults.Clear();
-        _deezerResults.AddRange(tracks);
-        _deezerSource.DataSource = _deezerResults.ToList();
-        _gridDeezer.DataSource = _deezerSource;
-    }
-
-    public void ClearNewGenreInput()
-    {
-        if (_txtNewGenreName is not null)
-        {
-            _txtNewGenreName.Clear();
-        }
-    }
-
-    public void ClearNewCategoryInput()
-    {
-        if (_txtNewCategoryName is not null)
-        {
-            _txtNewCategoryName.Clear();
-        }
-    }
-
-    public void ClearNewArtistInput()
-    {
-        if (_txtNewArtistName is not null)
-        {
-            _txtNewArtistName.Clear();
-        }
-    }
+    public void ClearNewGenreInput() => _txtNewGenreName?.Clear();
+    public void ClearNewCategoryInput() => _txtNewCategoryName?.Clear();
+    public void ClearNewArtistInput() => _txtNewArtistName?.Clear();
 
     public void PlayPreview(string previewUrl, string trackTitle)
     {
-        _lblNowPlaying.Text = $"Сейчас играет: {trackTitle}";
+        _lblNowPlaying.Text = $"▶  {trackTitle}";
         _player.URL = previewUrl;
         _player.Ctlcontrols.play();
     }
 
     public void ShowMessage(string message, string title = "Music App")
-    {
-        MessageBox.Show(this, message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
-    }
+        => MessageBox.Show(this, message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
 
     public void ClearEntryFields()
     {
@@ -300,7 +255,8 @@ public partial class AdminForm : Form, IAdminView
         ApplyArtistFilter(string.Empty);
         _txtAlbum.Clear();
         _txtAudioFilePath.Clear();
-        _numDuration.Value = 180;
+        _durationSeconds = 0;
+        _lblDuration.Text = "— сек";
         _importedGenreName = null;
     }
 
@@ -309,7 +265,8 @@ public partial class AdminForm : Form, IAdminView
         _editingTrackId = track.Id;
         _txtTrackTitle.Text = track.Title;
         _txtAlbum.Text = track.Album;
-        _numDuration.Value = Math.Min(_numDuration.Maximum, Math.Max(_numDuration.Minimum, track.DurationSeconds));
+        _durationSeconds = track.DurationSeconds;
+        _lblDuration.Text = FormatDuration(_durationSeconds);
         _txtAudioFilePath.Clear();
         _importedGenreName = null;
 
@@ -318,10 +275,17 @@ public partial class AdminForm : Form, IAdminView
         SelectCategoryByName(track.Category);
     }
 
+    // ─── Layout builders ─────────────────────────────────────────────────────
     private Control BuildManageLayout()
     {
-        var root = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, SplitterDistance = 320 };
+        var root = new SplitContainer
+        {
+            Dock = DockStyle.Fill,
+            Orientation = Orientation.Horizontal,
+            SplitterDistance = 340
+        };
 
+        // ── TOP ──
         var top = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -334,46 +298,55 @@ public partial class AdminForm : Form, IAdminView
         top.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         top.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        var fieldsLayout = new TableLayoutPanel
+        // fields row
+        var fields = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
             ColumnCount = 4,
             RowCount = 3,
             AutoSize = true
         };
-        fieldsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        fieldsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        fieldsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        fieldsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        fieldsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        fieldsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        fieldsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        fields.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        fields.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        for (var i = 0; i < 3; i++) fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        fieldsLayout.Controls.Add(new Label { Text = "Аудиофайл", Anchor = AnchorStyles.Left, AutoSize = true }, 0, 0);
+        // row 0 — audio file
+        fields.Controls.Add(MkLabel("Аудиофайл"), 0, 0);
         _txtAudioFilePath = new TextBox { ReadOnly = true, Dock = DockStyle.Fill, MinimumSize = new Size(260, 0) };
-        fieldsLayout.Controls.Add(_txtAudioFilePath, 1, 0);
-        fieldsLayout.SetColumnSpan(_txtAudioFilePath, 2);
-        var btnPickAudio = new Button { Text = "Выбрать", AutoSize = true, Anchor = AnchorStyles.Left };
-        fieldsLayout.Controls.Add(btnPickAudio, 3, 0);
+        fields.Controls.Add(_txtAudioFilePath, 1, 0);
+        fields.SetColumnSpan(_txtAudioFilePath, 2);
+        var btnPickAudio = new Button { Text = "Выбрать файл…", AutoSize = true, Anchor = AnchorStyles.Left };
+        fields.Controls.Add(btnPickAudio, 3, 0);
 
-        fieldsLayout.Controls.Add(new Label { Text = "Трек", Anchor = AnchorStyles.Left, AutoSize = true }, 0, 1);
+        // row 1 — title / album
+        fields.Controls.Add(MkLabel("Трек"), 0, 1);
         _txtTrackTitle = new TextBox { Dock = DockStyle.Fill, MinimumSize = new Size(220, 0) };
-        fieldsLayout.Controls.Add(_txtTrackTitle, 1, 1);
-
-        fieldsLayout.Controls.Add(new Label { Text = "Альбом", Anchor = AnchorStyles.Left, AutoSize = true }, 2, 1);
+        fields.Controls.Add(_txtTrackTitle, 1, 1);
+        fields.Controls.Add(MkLabel("Альбом"), 2, 1);
         _txtAlbum = new TextBox { Dock = DockStyle.Fill, MinimumSize = new Size(220, 0) };
-        fieldsLayout.Controls.Add(_txtAlbum, 3, 1);
+        fields.Controls.Add(_txtAlbum, 3, 1);
 
-        fieldsLayout.Controls.Add(new Label { Text = "Категория", Anchor = AnchorStyles.Left, AutoSize = true }, 0, 2);
+        // row 2 — category / duration (auto)
+        fields.Controls.Add(MkLabel("Категория"), 0, 2);
         _cmbCategory = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill, MinimumSize = new Size(220, 0) };
-        fieldsLayout.Controls.Add(_cmbCategory, 1, 2);
+        fields.Controls.Add(_cmbCategory, 1, 2);
+        fields.Controls.Add(MkLabel("Длительность"), 2, 2);
+        _lblDuration = new Label
+        {
+            Text = "— сек",
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Font = new Font("Segoe UI", 10f, FontStyle.Bold),
+            ForeColor = AppleMusicTheme.Accent
+        };
+        fields.Controls.Add(_lblDuration, 3, 2);
 
-        fieldsLayout.Controls.Add(new Label { Text = "Длительность, сек", Anchor = AnchorStyles.Left, AutoSize = true }, 2, 2);
-        _numDuration = new NumericUpDown { Maximum = 10000, Minimum = 0, Value = 180, Dock = DockStyle.Fill, MinimumSize = new Size(220, 0) };
-        fieldsLayout.Controls.Add(_numDuration, 3, 2);
-        top.Controls.Add(fieldsLayout, 0, 0);
+        top.Controls.Add(fields, 0, 0);
 
-        var selectionLayout = new TableLayoutPanel
+        // artists / genres selection
+        var selLayout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 2,
@@ -381,257 +354,74 @@ public partial class AdminForm : Form, IAdminView
             MinimumSize = new Size(0, 170),
             Margin = new Padding(0, 8, 0, 8)
         };
-        selectionLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        selectionLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        selLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        selLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
 
-        var artistPanel = BuildSelectionPanel(
-            "Артисты",
-            "Поиск артиста...",
-            out _txtArtistSearch,
-            out _clbArtists,
-            ApplyArtistFilter,
-            ArtistItemCheckChanged);
+        selLayout.Controls.Add(BuildSelectionPanel(
+            "Артисты", "Поиск артиста…",
+            out _txtArtistSearch, out _clbArtists,
+            ApplyArtistFilter, ArtistItemCheckChanged), 0, 0);
+        selLayout.Controls.Add(BuildSelectionPanel(
+            "Жанры", "Поиск жанра…",
+            out _txtGenreSearch, out _clbGenres,
+            ApplyGenreFilter, GenreItemCheckChanged), 1, 0);
 
-        var genrePanel = BuildSelectionPanel(
-            "Жанры",
-            "Поиск жанра...",
-            out _txtGenreSearch,
-            out _clbGenres,
-            ApplyGenreFilter,
-            GenreItemCheckChanged);
-
-        selectionLayout.Controls.Add(artistPanel, 0, 0);
-        selectionLayout.Controls.Add(genrePanel, 1, 0);
-        top.Controls.Add(selectionLayout, 0, 1);
+        top.Controls.Add(selLayout, 0, 1);
 
         top.Controls.Add(new Label
         {
-            Text = "Если у mp3 есть теги, поля заполнятся автоматически. Жанр и категория будут выбраны или созданы при сохранении.",
-            AutoSize = true
+            Text = "Длительность рассчитывается автоматически из аудиофайла.",
+            AutoSize = true,
+            ForeColor = AppleMusicTheme.TextSecondary
         }, 0, 2);
 
-        var buttonPanel = new FlowLayoutPanel
+        var btnPanel = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.RightToLeft,
             WrapContents = false,
             AutoSize = true
         };
-        var btnAddTrack = new Button { Text = "Сохранить трек", AutoSize = true };
-        var btnUpdateTrack = new Button { Text = "Обновить выбранный", AutoSize = true };
-        var btnDeleteTrack = new Button { Text = "Удалить выбранный", AutoSize = true };
-        var btnLoadTrack = new Button { Text = "Заполнить из выбранного", AutoSize = true };
-        buttonPanel.Controls.Add(btnAddTrack);
-        buttonPanel.Controls.Add(btnUpdateTrack);
-        buttonPanel.Controls.Add(btnDeleteTrack);
-        buttonPanel.Controls.Add(btnLoadTrack);
-        top.Controls.Add(buttonPanel, 0, 3);
-        buttonPanel.Anchor = AnchorStyles.Right | AnchorStyles.Top;
-
-        var lowerGrid = CreateGrid(_tracksSource);
+        var btnSave = new Button { Text = "💾  Сохранить трек", AutoSize = true };
+        var btnUpdate = new Button { Text = "✏️  Обновить выбранный", AutoSize = true };
+        var btnDelete = new Button { Text = "🗑  Удалить выбранный", AutoSize = true };
+        var btnLoad = new Button { Text = "📋  Заполнить из выбранного", AutoSize = true };
+        btnDelete.BackColor = Color.FromArgb(180, 40, 40);
+        btnPanel.Controls.AddRange([btnSave, btnUpdate, btnDelete, btnLoad]);
+        top.Controls.Add(btnPanel, 0, 3);
 
         root.Panel1.Controls.Add(top);
-        root.Panel2.Controls.Add(lowerGrid);
+        root.Panel2.Controls.Add(CreateGrid(_tracksSource));
 
-        btnPickAudio.Click += async (_, _) =>
-        {
-            if (_presenter is not null)
-            {
-                await _presenter.ImportAudioFileAsync();
-            }
-        };
-        btnAddTrack.Click += async (_, _) =>
-        {
-            if (_presenter is not null)
-            {
-                await _presenter.AddManualTrackAsync();
-            }
-        };
-        btnUpdateTrack.Click += async (_, _) =>
-        {
-            if (_presenter is not null)
-            {
-                await _presenter.UpdateSelectedTrackAsync();
-            }
-        };
-        btnDeleteTrack.Click += async (_, _) =>
-        {
-            if (_presenter is not null)
-            {
-                await _presenter.DeleteSelectedTrackAsync();
-            }
-        };
-        btnLoadTrack.Click += (_, _) => _presenter?.LoadSelectedTrackIntoEditor();
+        btnPickAudio.Click += async (_, _) => { if (_presenter is not null) await _presenter.ImportAudioFileAsync(); };
+        btnSave.Click += async (_, _) => { if (_presenter is not null) await _presenter.AddManualTrackAsync(); };
+        btnUpdate.Click += async (_, _) => { if (_presenter is not null) await _presenter.UpdateSelectedTrackAsync(); };
+        btnDelete.Click += async (_, _) => { if (_presenter is not null) await _presenter.DeleteSelectedTrackAsync(); };
+        btnLoad.Click += (_, _) => _presenter?.LoadSelectedTrackIntoEditor();
 
         return root;
     }
-    private Control BuildGenreCatalogLayout()
-    {
-        var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
 
-        _txtGenreLookupSearch = new TextBox { Left = 12, Top = 12, Width = 360, PlaceholderText = "Search genre..." };
-        _txtGenreLookupSearch.TextChanged += (_, _) => ApplyGenreLookupFilter(_txtGenreLookupSearch.Text);
-
-        _txtNewGenreName = new TextBox { Left = 12, Top = 48, Width = 260, PlaceholderText = "New genre" };
-        var btnAdd = new Button { Left = 280, Top = 48, Width = 90, Height = 28, Text = "Add" };
-        var btnDelete = new Button { Left = 380, Top = 48, Width = 120, Height = 28, Text = "Delete selected" };
-
-        _gridGenreLookup = new DataGridView
-        {
-            Left = 12,
-            Top = 88,
-            Width = 1180,
-            Height = 540,
-            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
-            ReadOnly = true,
-            AutoGenerateColumns = true,
-            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-            MultiSelect = false,
-            AllowUserToAddRows = false,
-            DataSource = _genreLookupSource
-        };
-
-        btnAdd.Click += async (_, _) =>
-        {
-            if (_presenter is not null)
-            {
-                await _presenter.AddGenreLookupAsync();
-            }
-        };
-        btnDelete.Click += async (_, _) =>
-        {
-            if (_presenter is not null)
-            {
-                await _presenter.DeleteSelectedGenreLookupAsync();
-            }
-        };
-
-        panel.Controls.Add(_txtGenreLookupSearch);
-        panel.Controls.Add(_txtNewGenreName);
-        panel.Controls.Add(btnAdd);
-        panel.Controls.Add(btnDelete);
-        panel.Controls.Add(_gridGenreLookup);
-
-        return panel;
-    }
-
-    private Control BuildCategoryCatalogLayout()
-    {
-        var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
-
-        _txtCategoryLookupSearch = new TextBox { Left = 12, Top = 12, Width = 360, PlaceholderText = "Search category..." };
-        _txtCategoryLookupSearch.TextChanged += (_, _) => ApplyCategoryLookupFilter(_txtCategoryLookupSearch.Text);
-
-        _txtNewCategoryName = new TextBox { Left = 12, Top = 48, Width = 260, PlaceholderText = "New category" };
-        var btnAdd = new Button { Left = 280, Top = 48, Width = 90, Height = 28, Text = "Add" };
-        var btnDelete = new Button { Left = 380, Top = 48, Width = 120, Height = 28, Text = "Delete selected" };
-
-        _gridCategoryLookup = new DataGridView
-        {
-            Left = 12,
-            Top = 88,
-            Width = 1180,
-            Height = 540,
-            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
-            ReadOnly = true,
-            AutoGenerateColumns = true,
-            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-            MultiSelect = false,
-            AllowUserToAddRows = false,
-            DataSource = _categoryLookupSource
-        };
-
-        btnAdd.Click += async (_, _) =>
-        {
-            if (_presenter is not null)
-            {
-                await _presenter.AddCategoryLookupAsync();
-            }
-        };
-        btnDelete.Click += async (_, _) =>
-        {
-            if (_presenter is not null)
-            {
-                await _presenter.DeleteSelectedCategoryLookupAsync();
-            }
-        };
-
-        panel.Controls.Add(_txtCategoryLookupSearch);
-        panel.Controls.Add(_txtNewCategoryName);
-        panel.Controls.Add(btnAdd);
-        panel.Controls.Add(btnDelete);
-        panel.Controls.Add(_gridCategoryLookup);
-
-        return panel;
-    }
-
-    private Control BuildArtistCatalogLayout()
-    {
-        var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
-
-        _txtArtistLookupSearch = new TextBox { Left = 12, Top = 12, Width = 360, PlaceholderText = "Search artist..." };
-        _txtArtistLookupSearch.TextChanged += (_, _) => ApplyArtistLookupFilter(_txtArtistLookupSearch.Text);
-
-        _txtNewArtistName = new TextBox { Left = 12, Top = 48, Width = 260, PlaceholderText = "New artist" };
-        var btnAdd = new Button { Left = 280, Top = 48, Width = 90, Height = 28, Text = "Add" };
-        var btnDelete = new Button { Left = 380, Top = 48, Width = 120, Height = 28, Text = "Delete selected" };
-
-        _gridArtistLookup = new DataGridView
-        {
-            Left = 12,
-            Top = 88,
-            Width = 1180,
-            Height = 540,
-            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
-            ReadOnly = true,
-            AutoGenerateColumns = true,
-            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-            MultiSelect = false,
-            AllowUserToAddRows = false,
-            DataSource = _artistLookupSource
-        };
-
-        btnAdd.Click += async (_, _) =>
-        {
-            if (_presenter is not null)
-            {
-                await _presenter.AddArtistLookupAsync();
-            }
-        };
-        btnDelete.Click += async (_, _) =>
-        {
-            if (_presenter is not null)
-            {
-                await _presenter.DeleteSelectedArtistLookupAsync();
-            }
-        };
-
-        panel.Controls.Add(_txtArtistLookupSearch);
-        panel.Controls.Add(_txtNewArtistName);
-        panel.Controls.Add(btnAdd);
-        panel.Controls.Add(btnDelete);
-        panel.Controls.Add(_gridArtistLookup);
-
-        return panel;
-    }
     private Control BuildTracksLayout()
     {
         var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
-        var btnPlaySelected = new Button { Text = "Прослушать выбранный", Left = 12, Top = 58, Width = 180, Height = 30 };
 
         var searchPanel = new Panel { Dock = DockStyle.Top, Height = 100 };
-        var titleLabel = new Label { Text = "Название", Left = 0, Top = 10, Width = 70 };
+        searchPanel.Controls.Add(MkLabel("Название").WithPos(0, 10));
         _txtTrackSearchTitle = new TextBox { Left = 0, Top = 32, Width = 240 };
-        var artistLabel = new Label { Text = "Исполнитель", Left = 260, Top = 10, Width = 90 };
+        searchPanel.Controls.Add(MkLabel("Исполнитель").WithPos(260, 10));
         _txtTrackSearchArtist = new TextBox { Left = 260, Top = 32, Width = 240 };
-        var albumLabel = new Label { Text = "Альбом", Left = 520, Top = 10, Width = 60 };
+        searchPanel.Controls.Add(MkLabel("Альбом").WithPos(520, 10));
         _txtTrackSearchAlbum = new TextBox { Left = 520, Top = 32, Width = 240 };
-        var genreLabel = new Label { Text = "Жанр", Left = 780, Top = 10, Width = 50 };
+        searchPanel.Controls.Add(MkLabel("Жанр").WithPos(780, 10));
         _txtTrackSearchGenre = new TextBox { Left = 780, Top = 32, Width = 180 };
-        var btnSearch = new Button { Text = "Поиск", Left = 970, Top = 32, Width = 110, Height = 30 };
-        var btnReset = new Button { Text = "Сбросить", Left = 1090, Top = 32, Width = 110, Height = 30 };
+        var btnSearch = new Button { Text = "🔍 Поиск", Left = 970, Top = 32, Width = 110, Height = 30 };
+        var btnReset = new Button { Text = "✕ Сбросить", Left = 1090, Top = 32, Width = 110, Height = 30 };
+        var btnPlay = new Button { Text = "▶ Слушать", Left = 12, Top = 64, Width = 180, Height = 30 };
+        btnReset.BackColor = Color.FromArgb(70, 70, 72);
 
-        searchPanel.Controls.AddRange([titleLabel, _txtTrackSearchTitle, artistLabel, _txtTrackSearchArtist, albumLabel, _txtTrackSearchAlbum, genreLabel, _txtTrackSearchGenre, btnSearch, btnReset, btnPlaySelected]);
+        searchPanel.Controls.AddRange([_txtTrackSearchTitle, _txtTrackSearchArtist,
+            _txtTrackSearchAlbum, _txtTrackSearchGenre, btnSearch, btnReset, btnPlay]);
 
         _gridTracks = new DataGridView
         {
@@ -647,31 +437,15 @@ public partial class AdminForm : Form, IAdminView
         panel.Controls.Add(_gridTracks);
         panel.Controls.Add(searchPanel);
 
-        btnSearch.Click += async (_, _) =>
-        {
-            if (_presenter is not null)
-            {
-                await _presenter.SearchTracksAsync();
-            }
-        };
+        btnSearch.Click += async (_, _) => { if (_presenter is not null) await _presenter.SearchTracksAsync(); };
         btnReset.Click += async (_, _) =>
         {
-            _txtTrackSearchTitle.Clear();
-            _txtTrackSearchArtist.Clear();
-            _txtTrackSearchAlbum.Clear();
-            _txtTrackSearchGenre.Clear();
-            if (_presenter is not null)
-            {
-                await _presenter.SearchTracksAsync();
-            }
+            _txtTrackSearchTitle.Clear(); _txtTrackSearchArtist.Clear();
+            _txtTrackSearchAlbum.Clear(); _txtTrackSearchGenre.Clear();
+            if (_presenter is not null) await _presenter.SearchTracksAsync();
         };
-        btnPlaySelected.Click += async (_, _) =>
-        {
-            if (_presenter is not null)
-            {
-                await _presenter.PlaySelectedTrackAsync();
-            }
-        };
+        btnPlay.Click += async (_, _) => { if (_presenter is not null) await _presenter.PlaySelectedTrackAsync(); };
+
         return panel;
     }
 
@@ -687,30 +461,23 @@ public partial class AdminForm : Form, IAdminView
         host.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         host.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-        var searchPanel = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            AutoSize = true,
-            WrapContents = false
-        };
-        _txtUserSearch = new TextBox { Width = 320, PlaceholderText = "Поиск пользователя по логину..." };
-        var btnSearch = new Button { Text = "Поиск", AutoSize = true };
-        var btnReset = new Button { Text = "Сбросить", AutoSize = true };
-        searchPanel.Controls.Add(_txtUserSearch);
-        searchPanel.Controls.Add(btnSearch);
-        searchPanel.Controls.Add(btnReset);
-        host.Controls.Add(searchPanel, 0, 0);
+        var searchBar = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = false };
+        _txtUserSearch = new TextBox { Width = 320, PlaceholderText = "Поиск по логину…" };
+        var btnSearch = new Button { Text = "🔍 Поиск", AutoSize = true };
+        var btnReset = new Button { Text = "✕", AutoSize = true };
+        btnReset.BackColor = Color.FromArgb(70, 70, 72);
+        searchBar.Controls.AddRange([_txtUserSearch, btnSearch, btnReset]);
+        host.Controls.Add(searchBar, 0, 0);
 
-        var root = new SplitContainer
+        var split = new SplitContainer
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
             SplitterDistance = 360
         };
-
         _gridUsers = CreateGrid(_usersSource);
         _gridUsers.SelectionChanged += GridUsers_SelectionChanged;
-        root.Panel1.Controls.Add(_gridUsers);
+        split.Panel1.Controls.Add(_gridUsers);
 
         var rightSplit = new SplitContainer
         {
@@ -718,111 +485,83 @@ public partial class AdminForm : Form, IAdminView
             Orientation = Orientation.Horizontal,
             SplitterDistance = 260
         };
-
         _gridUserPlaylists = CreateGrid(_userPlaylistsSource);
         _gridUserPlaylists.SelectionChanged += GridUserPlaylists_SelectionChanged;
         rightSplit.Panel1.Controls.Add(_gridUserPlaylists);
-
         _gridUserPlaylistTracks = CreateGrid(_userPlaylistTracksSource);
         rightSplit.Panel2.Controls.Add(_gridUserPlaylistTracks);
+        split.Panel2.Controls.Add(rightSplit);
 
-        root.Panel2.Controls.Add(rightSplit);
-        host.Controls.Add(root, 0, 1);
+        host.Controls.Add(split, 0, 1);
 
         _txtUserSearch.TextChanged += (_, _) => ApplyUserFilter(_txtUserSearch.Text);
         btnSearch.Click += (_, _) => ApplyUserFilter(_txtUserSearch.Text);
-        btnReset.Click += (_, _) =>
-        {
-            _txtUserSearch.Clear();
-            ApplyUserFilter(string.Empty);
-        };
+        btnReset.Click += (_, _) => { _txtUserSearch.Clear(); ApplyUserFilter(string.Empty); };
 
         return host;
     }
 
-    private Control BuildDeezerLayout()
+    private Control BuildGenreCatalogLayout() => BuildLookupTab("Поиск жанра…", "Новый жанр", out _txtGenreLookupSearch, out _txtNewGenreName, out _gridGenreLookup, _genreLookupSource,
+        async () => { if (_presenter is not null) await _presenter.AddGenreLookupAsync(); },
+        async () => { if (_presenter is not null) await _presenter.DeleteSelectedGenreLookupAsync(); },
+        t => ApplyGenreLookupFilter(t));
+
+    private Control BuildCategoryCatalogLayout() => BuildLookupTab("Поиск категории…", "Новая категория", out _txtCategoryLookupSearch, out _txtNewCategoryName, out _gridCategoryLookup, _categoryLookupSource,
+        async () => { if (_presenter is not null) await _presenter.AddCategoryLookupAsync(); },
+        async () => { if (_presenter is not null) await _presenter.DeleteSelectedCategoryLookupAsync(); },
+        t => ApplyCategoryLookupFilter(t));
+
+    private Control BuildArtistCatalogLayout() => BuildLookupTab("Поиск артиста…", "Новый артист", out _txtArtistLookupSearch, out _txtNewArtistName, out _gridArtistLookup, _artistLookupSource,
+        async () => { if (_presenter is not null) await _presenter.AddArtistLookupAsync(); },
+        async () => { if (_presenter is not null) await _presenter.DeleteSelectedArtistLookupAsync(); },
+        t => ApplyArtistLookupFilter(t));
+
+    private static Control BuildLookupTab(
+        string searchPlaceholder, string addPlaceholder,
+        out TextBox txtSearch, out TextBox txtNew,
+        out DataGridView grid, BindingSource source,
+        Func<Task> onAdd, Func<Task> onDelete,
+        Action<string> onFilterChanged)
     {
         var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
-        _txtDeezerQuery = new TextBox { Left = 12, Top = 12, Width = 560 };
-        var btnSearch = new Button { Text = "Поиск Deezer", Left = 584, Top = 12, Width = 140, Height = 30 };
-        var btnImport = new Button { Text = "Импортировать", Left = 730, Top = 12, Width = 150, Height = 30 };
-        var btnPlayPreview = new Button { Text = "Слушать preview", Left = 12, Top = 48, Width = 150, Height = 30 };
-        var btnSelectAll = new Button { Text = "Выбрать все", Left = 174, Top = 48, Width = 130, Height = 30 };
-        var btnClearSelection = new Button { Text = "Сбросить выбор", Left = 316, Top = 48, Width = 140, Height = 30 };
 
-        _gridDeezer = new DataGridView
+        var search = new TextBox { Left = 12, Top = 12, Width = 360, PlaceholderText = searchPlaceholder };
+        search.TextChanged += (_, _) => onFilterChanged(search.Text);
+
+        var newItem = new TextBox { Left = 12, Top = 48, Width = 260, PlaceholderText = addPlaceholder };
+        var btnAdd = new Button { Left = 280, Top = 48, Width = 90, Height = 28, Text = "➕ Добавить" };
+        var btnDelete = new Button
         {
-            Top = 90,
+            Left = 380,
+            Top = 48,
+            Width = 130,
+            Height = 28,
+            Text = "🗑 Удалить",
+            BackColor = Color.FromArgb(180, 40, 40)
+        };
+
+        var dg = new DataGridView
+        {
             Left = 12,
+            Top = 88,
             Width = 1180,
-            Height = 520,
+            Height = 540,
             Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
-            ReadOnly = false,
+            ReadOnly = true,
             AutoGenerateColumns = true,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-            MultiSelect = true,
+            MultiSelect = false,
             AllowUserToAddRows = false,
-            DataSource = _deezerSource
+            DataSource = source
         };
 
-        var selectColumn = new DataGridViewCheckBoxColumn
-        {
-            Name = "SelectColumn",
-            HeaderText = "Выбрать",
-            Width = 60,
-            ReadOnly = false,
-            TrueValue = true,
-            FalseValue = false
-        };
+        btnAdd.Click += async (_, _) => await onAdd();
+        btnDelete.Click += async (_, _) => await onDelete();
 
-        panel.Controls.Add(_txtDeezerQuery);
-        panel.Controls.Add(btnSearch);
-        panel.Controls.Add(btnImport);
-        panel.Controls.Add(btnPlayPreview);
-        panel.Controls.Add(btnSelectAll);
-        panel.Controls.Add(btnClearSelection);
-        panel.Controls.Add(_gridDeezer);
-
-        btnSearch.Click += async (_, _) =>
-        {
-            if (_presenter is not null)
-            {
-                await _presenter.SearchDeezerAsync();
-            }
-        };
-        btnImport.Click += async (_, _) =>
-        {
-            if (_presenter is not null)
-            {
-                await _presenter.ImportDeezerTracksAsync();
-            }
-        };
-        btnPlayPreview.Click += async (_, _) =>
-        {
-            if (_presenter is not null)
-            {
-                await _presenter.PlaySelectedDeezerTrackAsync();
-            }
-        };
-        btnSelectAll.Click += (_, _) => SetAllDeezerSelection(true);
-        btnClearSelection.Click += (_, _) => SetAllDeezerSelection(false);
-
-        _gridDeezer.DataBindingComplete += (_, _) =>
-        {
-            if (!_gridDeezer.Columns.Contains("SelectColumn"))
-            {
-                _gridDeezer.Columns.Insert(0, selectColumn);
-            }
-
-            foreach (DataGridViewColumn column in _gridDeezer.Columns)
-            {
-                if (column.Name != "SelectColumn")
-                {
-                    column.ReadOnly = true;
-                }
-            }
-        };
-
+        panel.Controls.AddRange([search, newItem, btnAdd, btnDelete, dg]);
+        txtSearch = search;
+        txtNew = newItem;
+        grid = dg;
         return panel;
     }
 
@@ -837,333 +576,232 @@ public partial class AdminForm : Form, IAdminView
         _lblNowPlaying = new Label
         {
             Dock = DockStyle.Top,
-            Height = 24,
-            Text = "Сейчас играет: ничего не выбрано"
+            Height = 26,
+            Text = "▶  ничего не выбрано",
+            ForeColor = AppleMusicTheme.Accent,
+            Font = new Font("Segoe UI", 10f, FontStyle.Bold)
         };
 
-        var playerPanel = new Panel { Dock = DockStyle.Bottom, Height = 140, Padding = new Padding(12) };
-        playerPanel.Controls.Add(_player);
-        playerPanel.Controls.Add(_lblNowPlaying);
-        return playerPanel;
-    }
-
-    private void SetAllDeezerSelection(bool isSelected)
-    {
-        foreach (DataGridViewRow row in _gridDeezer.Rows)
+        var pp = new Panel
         {
-            if (row.Cells["SelectColumn"] is DataGridViewCheckBoxCell checkBoxCell)
-            {
-                checkBoxCell.Value = isSelected;
-            }
-        }
+            Dock = DockStyle.Bottom,
+            Height = 140,
+            Padding = new Padding(12),
+            BackColor = Color.FromArgb(28, 28, 30)
+        };
+        pp.Controls.Add(_player);
+        pp.Controls.Add(_lblNowPlaying);
+        return pp;
     }
 
-    private void ApplyGenreFilter(string filterText)
+    // ─── Filter helpers ──────────────────────────────────────────────────────
+    private void ApplyGenreFilter(string filter)
     {
-        var source = string.IsNullOrWhiteSpace(filterText)
-            ? _allGenres
-            : _allGenres.Where(x => x.Name.Contains(filterText, StringComparison.OrdinalIgnoreCase)).ToList();
-
-        RebindCheckedList(_clbGenres, source, _selectedGenreNames, static genre => genre.Name);
+        var src = string.IsNullOrWhiteSpace(filter) ? _allGenres
+            : _allGenres.Where(x => x.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)).ToList();
+        RebindCheckedList(_clbGenres, src, _selectedGenreNames, g => g.Name);
     }
 
-    private void ApplyArtistFilter(string filterText)
+    private void ApplyArtistFilter(string filter)
     {
-        var source = string.IsNullOrWhiteSpace(filterText)
-            ? _allArtists
-            : _allArtists.Where(x => x.Name.Contains(filterText, StringComparison.OrdinalIgnoreCase)).ToList();
-
-        RebindCheckedList(_clbArtists, source, _selectedArtistNames, static artist => artist.Name);
+        var src = string.IsNullOrWhiteSpace(filter) ? _allArtists
+            : _allArtists.Where(x => x.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)).ToList();
+        RebindCheckedList(_clbArtists, src, _selectedArtistNames, a => a.Name);
     }
 
-    private void TryCheckArtistByName(string? artistName)
+    private void ApplyGenreLookupFilter(string filter)
     {
-        if (string.IsNullOrWhiteSpace(artistName))
-        {
-            return;
-        }
-
-        var found = false;
-        for (var i = 0; i < _clbArtists.Items.Count; i++)
-        {
-            if (_clbArtists.Items[i] is ArtistDto artist &&
-                string.Equals(artist.Name, artistName, StringComparison.OrdinalIgnoreCase))
-            {
-                _clbArtists.SetItemChecked(i, true);
-                found = true;
-                break;
-            }
-        }
-
-        if (found)
-        {
-            _selectedArtistNames.Add(artistName);
-        }
+        _genreLookupSource.DataSource = string.IsNullOrWhiteSpace(filter) ? _genreLookupAll
+            : _genreLookupAll.Where(x => x.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
-    private void TryCheckGenreByName(string? genreName)
+    private void ApplyCategoryLookupFilter(string filter)
     {
-        if (string.IsNullOrWhiteSpace(genreName))
-        {
-            return;
-        }
-
-        for (var i = 0; i < _clbGenres.Items.Count; i++)
-        {
-            if (_clbGenres.Items[i] is GenreDto genre &&
-                string.Equals(genre.Name, genreName, StringComparison.OrdinalIgnoreCase))
-            {
-                _clbGenres.SetItemChecked(i, true);
-                _selectedGenreNames.Add(genreName);
-                break;
-            }
-        }
+        _categoryLookupSource.DataSource = string.IsNullOrWhiteSpace(filter) ? _categoryLookupAll
+            : _categoryLookupAll.Where(x => x.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
-    private void ApplyGenreLookupFilter(string filterText)
+    private void ApplyArtistLookupFilter(string filter)
     {
-        var filtered = string.IsNullOrWhiteSpace(filterText)
-            ? _genreLookupAll
-            : _genreLookupAll
-                .Where(x => x.Name.Contains(filterText, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
-        _genreLookupSource.DataSource = filtered;
+        _artistLookupSource.DataSource = string.IsNullOrWhiteSpace(filter) ? _artistLookupAll
+            : _artistLookupAll.Where(x => x.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
-    private void ApplyCategoryLookupFilter(string filterText)
+    private void ApplyUserFilter(string filter)
     {
-        var filtered = string.IsNullOrWhiteSpace(filterText)
-            ? _categoryLookupAll
-            : _categoryLookupAll
-                .Where(x => x.Name.Contains(filterText, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
-        _categoryLookupSource.DataSource = filtered;
-    }
-
-    private void ApplyArtistLookupFilter(string filterText)
-    {
-        var filtered = string.IsNullOrWhiteSpace(filterText)
-            ? _artistLookupAll
-            : _artistLookupAll
-                .Where(x => x.Name.Contains(filterText, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
-        _artistLookupSource.DataSource = filtered;
-    }
-
-    private void ApplyUserFilter(string filterText)
-    {
-        var filtered = string.IsNullOrWhiteSpace(filterText)
-            ? _allUsers
-            : _allUsers
-                .Where(x => x.Username.Contains(filterText, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
+        var filtered = string.IsNullOrWhiteSpace(filter) ? _allUsers
+            : _allUsers.Where(x => x.Username.Contains(filter, StringComparison.OrdinalIgnoreCase)).ToList();
         _suppressUserSelectionChanged = true;
         _usersSource.DataSource = filtered;
         _suppressUserSelectionChanged = false;
+        if (!filtered.Any()) { SetUserPlaylists([]); SetSelectedUserPlaylistTracks([]); }
+    }
 
-        if (!filtered.Any())
+    // ─── CheckedListBox helpers ──────────────────────────────────────────────
+    private void TryCheckArtistByName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        for (var i = 0; i < _clbArtists.Items.Count; i++)
         {
-            SetUserPlaylists([]);
-            SetSelectedUserPlaylistTracks([]);
+            if (_clbArtists.Items[i] is ArtistDto a &&
+                string.Equals(a.Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                _clbArtists.SetItemChecked(i, true);
+                _selectedArtistNames.Add(name);
+                break;
+            }
         }
     }
 
-    private static DataGridView CreateGrid(object dataSource)
+    private void TryCheckGenreByName(string? name)
     {
-        return new DataGridView
+        if (string.IsNullOrWhiteSpace(name)) return;
+        for (var i = 0; i < _clbGenres.Items.Count; i++)
         {
-            Dock = DockStyle.Fill,
-            ReadOnly = true,
-            AutoGenerateColumns = true,
-            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-            MultiSelect = false,
-            AllowUserToAddRows = false,
-            DataSource = dataSource
-        };
+            if (_clbGenres.Items[i] is GenreDto g &&
+                string.Equals(g.Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                _clbGenres.SetItemChecked(i, true);
+                _selectedGenreNames.Add(name);
+                break;
+            }
+        }
     }
 
+    private void GenreItemCheckChanged(object? sender, ItemCheckEventArgs e)
+    {
+        if (_clbGenres.Items[e.Index] is GenreDto g)
+            UpdateSet(_selectedGenreNames, g.Name, e.NewValue);
+    }
+
+    private void ArtistItemCheckChanged(object? sender, ItemCheckEventArgs e)
+    {
+        if (_clbArtists.Items[e.Index] is ArtistDto a)
+            UpdateSet(_selectedArtistNames, a.Name, e.NewValue);
+    }
+
+    private static void UpdateSet(HashSet<string> set, string name, CheckState state)
+    {
+        if (state == CheckState.Checked) set.Add(name); else set.Remove(name);
+    }
+
+    private static void RebindCheckedList<T>(
+        CheckedListBox listBox, IReadOnlyList<T> source,
+        HashSet<string> selected, Func<T, string> getName) where T : class
+    {
+        listBox.BeginUpdate();
+        listBox.Items.Clear();
+        listBox.DisplayMember = "Name";
+        foreach (var item in source)
+        {
+            var idx = listBox.Items.Add(item);
+            var name = getName(item);
+            if (!string.IsNullOrWhiteSpace(name) && selected.Contains(name))
+                listBox.SetItemChecked(idx, true);
+        }
+        listBox.EndUpdate();
+    }
+
+    private void SetSelectedArtistsFromText(string text)
+    {
+        _selectedArtistNames.Clear();
+        _txtArtistSearch.Clear();
+        ApplyArtistFilter(string.Empty);
+        foreach (var n in SplitNames(text)) { _selectedArtistNames.Add(n); TryCheckArtistByName(n); }
+    }
+
+    private void SetSelectedGenresFromText(string text)
+    {
+        _selectedGenreNames.Clear();
+        _txtGenreSearch.Clear();
+        ApplyGenreFilter(string.Empty);
+        foreach (var n in SplitNames(text)) { _selectedGenreNames.Add(n); TryCheckGenreByName(n); }
+    }
+
+    private void SelectCategoryByName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) { _cmbCategory.SelectedIndex = -1; _cmbCategory.Text = string.Empty; return; }
+        for (var i = 0; i < _cmbCategory.Items.Count; i++)
+        {
+            if (_cmbCategory.Items[i] is CategoryDto c &&
+                string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase))
+            { _cmbCategory.SelectedIndex = i; return; }
+        }
+        _cmbCategory.Text = name;
+    }
+
+    // ─── Selection panel builder ─────────────────────────────────────────────
     private GroupBox BuildSelectionPanel(
-        string title,
-        string placeholder,
-        out TextBox searchTextBox,
-        out CheckedListBox checkedListBox,
-        Action<string> applyFilter,
-        ItemCheckEventHandler itemCheckHandler)
+        string title, string placeholder,
+        out TextBox searchBox, out CheckedListBox checkedList,
+        Action<string> applyFilter, ItemCheckEventHandler checkHandler)
     {
         var group = new GroupBox { Text = title, Dock = DockStyle.Fill, Padding = new Padding(10) };
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-        var searchBox = new TextBox { Dock = DockStyle.Top, PlaceholderText = placeholder };
-        var checkedList = new CheckedListBox
-        {
-            Dock = DockStyle.Fill,
-            CheckOnClick = true,
-            IntegralHeight = false,
-            MinimumSize = new Size(0, 120)
-        };
+        var sb = new TextBox { Dock = DockStyle.Top, PlaceholderText = placeholder };
+        var cl = new CheckedListBox { Dock = DockStyle.Fill, CheckOnClick = true, IntegralHeight = false, MinimumSize = new Size(0, 120) };
 
-        searchBox.TextChanged += (_, _) => applyFilter(searchBox.Text);
-        checkedList.ItemCheck += itemCheckHandler;
+        sb.TextChanged += (_, _) => applyFilter(sb.Text);
+        cl.ItemCheck += checkHandler;
 
-        layout.Controls.Add(searchBox, 0, 0);
-        layout.Controls.Add(checkedList, 0, 1);
+        layout.Controls.Add(sb, 0, 0);
+        layout.Controls.Add(cl, 0, 1);
         group.Controls.Add(layout);
 
-        searchTextBox = searchBox;
-        checkedListBox = checkedList;
-
+        searchBox = sb;
+        checkedList = cl;
         return group;
     }
 
-    private void GenreItemCheckChanged(object? sender, ItemCheckEventArgs e)
+    // ─── Grid / event helpers ─────────────────────────────────────────────────
+    private static DataGridView CreateGrid(object dataSource) => new()
     {
-        if (_clbGenres.Items[e.Index] is GenreDto genre)
-        {
-            UpdateSelectionSet(_selectedGenreNames, genre.Name, e.NewValue);
-        }
-    }
-
-    private void ArtistItemCheckChanged(object? sender, ItemCheckEventArgs e)
-    {
-        if (_clbArtists.Items[e.Index] is ArtistDto artist)
-        {
-            UpdateSelectionSet(_selectedArtistNames, artist.Name, e.NewValue);
-        }
-    }
-
-    private static void UpdateSelectionSet(HashSet<string> selectedNames, string itemName, CheckState newValue)
-    {
-        if (newValue == CheckState.Checked)
-        {
-            selectedNames.Add(itemName);
-            return;
-        }
-
-        selectedNames.Remove(itemName);
-    }
-
-    private static void RebindCheckedList<TItem>(
-        CheckedListBox listBox,
-        IReadOnlyList<TItem> source,
-        HashSet<string> selectedNames,
-        Func<TItem, string> getName)
-        where TItem : class
-    {
-        listBox.BeginUpdate();
-        listBox.Items.Clear();
-        listBox.DisplayMember = "Name";
-
-        foreach (var item in source)
-        {
-            var index = listBox.Items.Add(item);
-            var name = getName(item);
-            if (!string.IsNullOrWhiteSpace(name) && selectedNames.Contains(name))
-            {
-                listBox.SetItemChecked(index, true);
-            }
-        }
-
-        listBox.EndUpdate();
-    }
-
-    private void SetSelectedArtistsFromText(string artistText)
-    {
-        _selectedArtistNames.Clear();
-        _txtArtistSearch.Clear();
-        ApplyArtistFilter(string.Empty);
-
-        foreach (var artistName in SplitNames(artistText))
-        {
-            _selectedArtistNames.Add(artistName);
-            TryCheckArtistByName(artistName);
-        }
-    }
-
-    private void SetSelectedGenresFromText(string genreText)
-    {
-        _selectedGenreNames.Clear();
-        _txtGenreSearch.Clear();
-        ApplyGenreFilter(string.Empty);
-
-        foreach (var genreName in SplitNames(genreText))
-        {
-            _selectedGenreNames.Add(genreName);
-            TryCheckGenreByName(genreName);
-        }
-    }
-
-    private void SelectCategoryByName(string? categoryName)
-    {
-        if (string.IsNullOrWhiteSpace(categoryName))
-        {
-            _cmbCategory.SelectedIndex = -1;
-            _cmbCategory.Text = string.Empty;
-            return;
-        }
-
-        for (var i = 0; i < _cmbCategory.Items.Count; i++)
-        {
-            if (_cmbCategory.Items[i] is CategoryDto category &&
-                string.Equals(category.Name, categoryName, StringComparison.OrdinalIgnoreCase))
-            {
-                _cmbCategory.SelectedIndex = i;
-                return;
-            }
-        }
-
-        _cmbCategory.Text = categoryName;
-    }
-
-    private static IEnumerable<string> SplitNames(string? rawValue)
-    {
-        if (string.IsNullOrWhiteSpace(rawValue))
-        {
-            return [];
-        }
-
-        return rawValue.Split([',', ';', '|', '/'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-    }
-
-    private static bool IsInDesigner()
-    {
-        return LicenseManager.UsageMode == LicenseUsageMode.Designtime;
-    }
+        Dock = DockStyle.Fill,
+        ReadOnly = true,
+        AutoGenerateColumns = true,
+        SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+        MultiSelect = false,
+        AllowUserToAddRows = false,
+        DataSource = dataSource
+    };
 
     private async void GridUsers_SelectionChanged(object? sender, EventArgs e)
     {
-        if (_suppressUserSelectionChanged)
-        {
-            return;
-        }
-
-        if (_presenter is not null)
-        {
-            await _presenter.UserSelectionChangedAsync();
-        }
+        if (_suppressUserSelectionChanged) return;
+        if (_presenter is not null) await _presenter.UserSelectionChangedAsync();
     }
 
     private async void GridUserPlaylists_SelectionChanged(object? sender, EventArgs e)
     {
-        if (_suppressUserPlaylistSelectionChanged)
-        {
-            return;
-        }
-
-        if (_presenter is not null)
-        {
-            await _presenter.UserPlaylistSelectionChangedAsync();
-        }
+        if (_suppressUserPlaylistSelectionChanged) return;
+        if (_presenter is not null) await _presenter.UserPlaylistSelectionChangedAsync();
     }
 
+    // ─── Static utils ─────────────────────────────────────────────────────────
+    private static string FormatDuration(int seconds)
+    {
+        if (seconds <= 0) return "— сек";
+        var ts = TimeSpan.FromSeconds(seconds);
+        return ts.Hours > 0
+            ? $"{ts.Hours}:{ts.Minutes:D2}:{ts.Seconds:D2}  ({seconds} сек)"
+            : $"{ts.Minutes}:{ts.Seconds:D2}  ({seconds} сек)";
+    }
+
+    private static IEnumerable<string> SplitNames(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return [];
+        return raw.Split([',', ';', '|', '/'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    private static Label MkLabel(string text) =>
+        new() { Text = text, Anchor = AnchorStyles.Left, AutoSize = true };
 }
 
-
-
-
-
+// tiny extension so we can set position inline
+file static class LabelExt
+{
+    public static Label WithPos(this Label l, int x, int y) { l.Left = x; l.Top = y; return l; }
+}

@@ -5,12 +5,10 @@ namespace MusicApp.Infrastructure.Storage;
 
 public class LocalFileStorageService : IFileStorageService
 {
-    private readonly HttpClient _httpClient;
     private readonly string _storageDirectory;
 
-    public LocalFileStorageService(HttpClient httpClient, string baseDirectory)
+    public LocalFileStorageService(string baseDirectory)
     {
-        _httpClient = httpClient;
         _storageDirectory = Path.Combine(baseDirectory, "music_storage");
         Directory.CreateDirectory(_storageDirectory);
     }
@@ -37,27 +35,6 @@ public class LocalFileStorageService : IFileStorageService
         var destinationPath = Path.Combine(_storageDirectory, fileName);
         File.Copy(sourceFilePath, destinationPath, overwrite: true);
         return Task.FromResult(GetRelativePath(destinationPath));
-    }
-
-    public async Task<string> SaveFromUrlAsync(string url, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(url))
-        {
-            throw new ArgumentException("Source URL is required.", nameof(url));
-        }
-
-        using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        response.EnsureSuccessStatusCode();
-
-        var extension = GetExtensionFromResponse(response) ?? ".mp3";
-        var fileName = $"{Guid.NewGuid():N}{extension}";
-        var destinationPath = Path.Combine(_storageDirectory, fileName);
-
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        await using var fileStream = File.OpenWrite(destinationPath);
-        await stream.CopyToAsync(fileStream, cancellationToken);
-
-        return GetRelativePath(destinationPath);
     }
 
     public string GetAbsolutePath(string relativePath)

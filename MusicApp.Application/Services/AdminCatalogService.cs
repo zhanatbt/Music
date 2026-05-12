@@ -15,7 +15,6 @@ public class AdminCatalogService
     private readonly IAlbumRepository _albumRepository;
     private readonly IUserRepository _userRepository;
     private readonly IPlaylistRepository _playlistRepository;
-    private readonly IMusicImportClient _musicImportClient;
     private readonly IAudioMetadataReader _audioMetadataReader;
     private readonly IFileStorageService _fileStorageService;
 
@@ -27,7 +26,6 @@ public class AdminCatalogService
         IAlbumRepository albumRepository,
         IUserRepository userRepository,
         IPlaylistRepository playlistRepository,
-        IMusicImportClient musicImportClient,
         IAudioMetadataReader audioMetadataReader,
         IFileStorageService fileStorageService)
     {
@@ -38,7 +36,6 @@ public class AdminCatalogService
         _albumRepository = albumRepository;
         _userRepository = userRepository;
         _playlistRepository = playlistRepository;
-        _musicImportClient = musicImportClient;
         _audioMetadataReader = audioMetadataReader;
         _fileStorageService = fileStorageService;
     }
@@ -277,7 +274,6 @@ public class AdminCatalogService
             request.Title,
             primaryArtist.Id,
             album?.Id,
-            request.DeezerId,
             null,
             cancellationToken);
 
@@ -292,10 +288,6 @@ public class AdminCatalogService
         {
             playbackSource = await _fileStorageService.SaveAsync(request.AudioFilePath, cancellationToken);
         }
-        else if (!string.IsNullOrWhiteSpace(request.PreviewUrl))
-        {
-            playbackSource = await _fileStorageService.SaveFromUrlAsync(request.PreviewUrl, cancellationToken);
-        }
 
         var track = new Track
         {
@@ -303,9 +295,7 @@ public class AdminCatalogService
             AlbumId = album?.Id,
             CategoryId = category?.Id,
             DurationSeconds = request.DurationSeconds,
-            DeezerId = request.DeezerId,
             PreviewUrl = playbackSource,
-            SourceType = request.SourceType,
             TrackArtists = artists
                 .Select(artist => new TrackArtist { ArtistId = artist.Id })
                 .ToList(),
@@ -368,7 +358,6 @@ public class AdminCatalogService
             request.Title,
             primaryArtist.Id,
             album?.Id,
-            request.DeezerId ?? track.DeezerId,
             track.Id,
             cancellationToken);
 
@@ -380,7 +369,6 @@ public class AdminCatalogService
         if (!string.IsNullOrWhiteSpace(request.AudioFilePath))
         {
             track.PreviewUrl = await _fileStorageService.SaveAsync(request.AudioFilePath, cancellationToken);
-            track.SourceType = "LocalFile";
         }
 
         track.Title = request.Title.Trim();
@@ -406,11 +394,6 @@ public class AdminCatalogService
 
         await _trackRepository.DeleteAsync(track, cancellationToken);
         return OperationResult.Ok("Трек удален.");
-    }
-
-    public Task<IReadOnlyList<DeezerTrackDto>> SearchDeezerAsync(string query, CancellationToken cancellationToken = default)
-    {
-        return _musicImportClient.SearchAsync(query, cancellationToken);
     }
 
     private async Task<Category?> ResolveCategoryAsync(TrackCreateDto request, CancellationToken cancellationToken)

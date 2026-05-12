@@ -222,12 +222,6 @@ public class AdminPresenter
         }
     }
 
-    public async Task SearchDeezerAsync()
-    {
-        var tracks = await _catalogService.SearchDeezerAsync(_view.DeezerQuery);
-        _view.SetDeezerResults(tracks);
-    }
-
     public async Task SearchTracksAsync()
     {
         var tracks = await _catalogService.SearchTracksAsync(
@@ -270,61 +264,6 @@ public class AdminPresenter
         });
     }
 
-    public async Task ImportDeezerTracksAsync()
-    {
-        var tracksToImport = _view.SelectedDeezerTracks.ToList();
-        if (!tracksToImport.Any() && _view.SelectedDeezerTrack is not null)
-        {
-            tracksToImport.Add(_view.SelectedDeezerTrack);
-        }
-
-        if (!tracksToImport.Any())
-        {
-            _view.ShowMessage("Выберите трек или отметьте несколько треков для импорта.", "Ошибка");
-            return;
-        }
-
-        var importResults = new List<string>();
-        foreach (var track in tracksToImport)
-        {
-            try
-            {
-                var request = CreateDeezerTrackRequest(track);
-                var result = await _catalogService.AddTrackAsync(request);
-                importResults.Add(result.Success
-                    ? $"{track.ArtistName} - {track.Title}: импортировано"
-                    : $"{track.ArtistName} - {track.Title}: {result.Message}");
-            }
-            catch (Exception ex)
-            {
-                importResults.Add($"{track.ArtistName} - {track.Title}: ошибка {ex.Message}");
-            }
-        }
-
-        _view.ShowMessage(string.Join(Environment.NewLine, importResults), "Результат импорта");
-        await ReloadAsync();
-    }
-
-    private TrackCreateDto CreateDeezerTrackRequest(DeezerTrackDto track)
-    {
-        return new TrackCreateDto
-        {
-            Title = track.Title,
-            ArtistName = track.ArtistName,
-            ArtistNames = track.ArtistNames,
-            AlbumTitle = track.AlbumTitle,
-            DurationSeconds = track.DurationSeconds,
-            DeezerId = track.DeezerId,
-            PreviewUrl = track.PreviewUrl,
-            GenreId = _view.SelectedGenreId ?? 0,
-            GenreName = track.GenreName,
-            GenreNames = track.GenreNames,
-            CategoryId = _view.SelectedCategoryId,
-            CategoryName = _view.CategoryName,
-            SourceType = "Deezer"
-        };
-    }
-
     public Task PlaySelectedTrackAsync()
     {
         if (_view.SelectedTrack is null)
@@ -343,23 +282,6 @@ public class AdminPresenter
         return Task.CompletedTask;
     }
 
-    public Task PlaySelectedDeezerTrackAsync()
-    {
-        if (_view.SelectedDeezerTrack is null)
-        {
-            _view.ShowMessage("Выберите трек из результатов Deezer.", "Ошибка");
-            return Task.CompletedTask;
-        }
-
-        if (string.IsNullOrWhiteSpace(_view.SelectedDeezerTrack.PreviewUrl))
-        {
-            _view.ShowMessage("У выбранного Deezer-трека нет preview-ссылки.", "Информация");
-            return Task.CompletedTask;
-        }
-
-        _view.PlayPreview(_view.SelectedDeezerTrack.PreviewUrl, $"{_view.SelectedDeezerTrack.ArtistName} - {_view.SelectedDeezerTrack.Title}");
-        return Task.CompletedTask;
-    }
 
     private async Task ReloadAsync()
     {

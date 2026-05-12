@@ -7,9 +7,7 @@ public class Track
     public int? AlbumId { get; set; }
     public int? CategoryId { get; set; }
     public int DurationSeconds { get; set; }
-    public string? DeezerId { get; set; }
     public string? PreviewUrl { get; set; }
-    public string SourceType { get; set; } = "Manual";
 
     public Album? Album { get; set; }
     public Category? Category { get; set; }

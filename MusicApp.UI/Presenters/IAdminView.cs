@@ -28,15 +28,10 @@ public interface IAdminView
     int? SelectedGenreLookupId { get; }
     int? SelectedArtistLookupId { get; }
     int? EditingTrackId { get; }
-    string DeezerQuery { get; }
     string? ImportedAudioFilePath { get; }
-    string? ImportedGenreName { get; }
     TrackDto? SelectedTrack { get; }
     UserSessionDto? SelectedUser { get; }
     PlaylistDto? SelectedUserPlaylist { get; }
-    DeezerTrackDto? SelectedDeezerTrack { get; }
-    IReadOnlyList<DeezerTrackDto> SelectedDeezerTracks { get; }
-    IReadOnlyList<DeezerTrackDto> AllDeezerTracks { get; }
     string? PickAudioFile();
     void ApplyAudioMetadata(AudioMetadataDto metadata);
     void TrySelectGenreByName(string? genreName);
@@ -50,7 +45,6 @@ public interface IAdminView
     void SetUsers(IReadOnlyList<UserSessionDto> users);
     void SetUserPlaylists(IReadOnlyList<PlaylistDto> playlists);
     void SetSelectedUserPlaylistTracks(IReadOnlyList<TrackDto> tracks);
-    void SetDeezerResults(IReadOnlyList<DeezerTrackDto> tracks);
     void LoadTrackIntoEditor(TrackDto track);
     void ClearNewCategoryInput();
     void ClearNewGenreInput();

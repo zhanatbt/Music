@@ -22,9 +22,7 @@ public static class TrackMapper
                 .OrderBy(x => x)),
             Category = track.Category?.Name ?? string.Empty,
             DurationSeconds = track.DurationSeconds,
-            PreviewUrl = track.PreviewUrl,
-            IsLocalFile = string.Equals(track.SourceType, "LocalFile", StringComparison.OrdinalIgnoreCase),
-            SourceType = track.SourceType
+            PreviewUrl = track.PreviewUrl
         };
     }
 }
