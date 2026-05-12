@@ -9,4 +9,5 @@ public class Album
 
     public Artist? Artist { get; set; }
     public ICollection<Track> Tracks { get; set; } = new List<Track>();
+    public ICollection<AlbumArtist> AlbumArtists { get; set; } = new List<AlbumArtist>();
 }

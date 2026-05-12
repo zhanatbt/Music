@@ -5,43 +5,32 @@ using MusicApp.Infrastructure.Data;
 
 namespace MusicApp.Infrastructure.Repositories;
 
-public class ArtistRepository : IArtistRepository
+public class ArtistRepository(AppDbContext context) : IArtistRepository
 {
-    private readonly AppDbContext _context;
+    public async Task<IReadOnlyList<Artist>> GetAllAsync(CancellationToken ct = default)
+        => await context.Artists.OrderBy(x => x.Name).ToListAsync(ct);
 
-    public ArtistRepository(AppDbContext context)
+    public async Task<Artist?> GetByNameAsync(string name, CancellationToken ct = default)
+        => await context.Artists.FirstOrDefaultAsync(x => x.Name == name, ct);
+
+    public async Task AddAsync(Artist artist, CancellationToken ct = default)
     {
-        _context = context;
+        context.Artists.Add(artist);
+        await context.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Artist>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task UpdateAsync(Artist artist, CancellationToken ct = default)
     {
-        return await _context.Artists
-            .OrderBy(x => x.Name)
-            .ToListAsync(cancellationToken);
+        context.Artists.Update(artist);
+        await context.SaveChangesAsync(ct);
     }
 
-    public async Task<Artist?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteByIdAsync(int id, CancellationToken ct = default)
     {
-        return await _context.Artists.FirstOrDefaultAsync(x => x.Name == name, cancellationToken);
-    }
-
-    public async Task AddAsync(Artist artist, CancellationToken cancellationToken = default)
-    {
-        _context.Artists.Add(artist);
-        await _context.SaveChangesAsync(cancellationToken);
-    }
-
-    public async Task<bool> DeleteByIdAsync(int id, CancellationToken cancellationToken = default)
-    {
-        var artist = await _context.Artists.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (artist is null)
-        {
-            return false;
-        }
-
-        _context.Artists.Remove(artist);
-        await _context.SaveChangesAsync(cancellationToken);
+        var artist = await context.Artists.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (artist is null) return false;
+        context.Artists.Remove(artist);
+        await context.SaveChangesAsync(ct);
         return true;
     }
 }

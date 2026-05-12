@@ -42,17 +42,6 @@ public class LoginForm : Form, ILoginView
             BackColor = Color.Transparent
         };
 
-        var title = new Label
-        {
-            Text = "Music App",
-            Font = new Font("Segoe UI", 18f, FontStyle.Bold),
-            ForeColor = AppleMusicTheme.TextPrimary,
-            Dock = DockStyle.Top,
-            Height = 45,
-            TextAlign = ContentAlignment.MiddleCenter,
-            BackColor = Color.Transparent
-        };
-
         var panel = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -146,18 +135,7 @@ public class LoginForm : Form, ILoginView
         altButtons.Controls.AddRange([btnRegister, btnRecover]);
         panel.Controls.Add(altButtons, 0, 5);
 
-        var hint = new Label
-        {
-            Text = "demo: admin / admin123   •   user / user123",
-            AutoSize = true,
-            Padding = new Padding(0, 10, 0, 0),
-            ForeColor = AppleMusicTheme.TextSecondary,
-            Font = new Font("Segoe UI", 8f)
-        };
-        panel.Controls.Add(hint, 0, 6);
-
         Controls.Add(panel);
-        Controls.Add(title);
         Controls.Add(logo);
 
         btnLogin.Click += async (_, _) => await _presenter.LoginAsync();

@@ -5,46 +5,35 @@ using MusicApp.Infrastructure.Data;
 
 namespace MusicApp.Infrastructure.Repositories;
 
-public class GenreRepository : IGenreRepository
+public class GenreRepository(AppDbContext context) : IGenreRepository
 {
-    private readonly AppDbContext _context;
+    public async Task<IReadOnlyList<Genre>> GetAllAsync(CancellationToken ct = default)
+        => await context.Genres.OrderBy(x => x.Name).ToListAsync(ct);
 
-    public GenreRepository(AppDbContext context)
+    public async Task<Genre?> GetByIdAsync(int id, CancellationToken ct = default)
+        => await context.Genres.FirstOrDefaultAsync(x => x.Id == id, ct);
+
+    public async Task<Genre?> GetByNameAsync(string name, CancellationToken ct = default)
+        => await context.Genres.FirstOrDefaultAsync(x => x.Name == name, ct);
+
+    public async Task AddAsync(Genre genre, CancellationToken ct = default)
     {
-        _context = context;
+        context.Genres.Add(genre);
+        await context.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Genre>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task UpdateAsync(Genre genre, CancellationToken ct = default)
     {
-        return await _context.Genres.OrderBy(x => x.Name).ToListAsync(cancellationToken);
+        context.Genres.Update(genre);
+        await context.SaveChangesAsync(ct);
     }
 
-    public async Task<Genre?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteByIdAsync(int id, CancellationToken ct = default)
     {
-        return await _context.Genres.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-    }
-
-    public async Task<Genre?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
-    {
-        return await _context.Genres.FirstOrDefaultAsync(x => x.Name == name, cancellationToken);
-    }
-
-    public async Task AddAsync(Genre genre, CancellationToken cancellationToken = default)
-    {
-        _context.Genres.Add(genre);
-        await _context.SaveChangesAsync(cancellationToken);
-    }
-
-    public async Task<bool> DeleteByIdAsync(int id, CancellationToken cancellationToken = default)
-    {
-        var genre = await _context.Genres.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (genre is null)
-        {
-            return false;
-        }
-
-        _context.Genres.Remove(genre);
-        await _context.SaveChangesAsync(cancellationToken);
+        var genre = await context.Genres.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (genre is null) return false;
+        context.Genres.Remove(genre);
+        await context.SaveChangesAsync(ct);
         return true;
     }
 }

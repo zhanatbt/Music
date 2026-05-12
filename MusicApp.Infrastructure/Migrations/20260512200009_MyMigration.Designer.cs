@@ -12,8 +12,8 @@ using MusicApp.Infrastructure.Data;
 namespace MusicApp.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260512090533_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260512200009_MyMigration")]
+    partial class MyMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -52,6 +52,21 @@ namespace MusicApp.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Albums");
+                });
+
+            modelBuilder.Entity("MusicApp.Domain.Entities.AlbumArtist", b =>
+                {
+                    b.Property<int>("AlbumId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ArtistId")
+                        .HasColumnType("int");
+
+                    b.HasKey("AlbumId", "ArtistId");
+
+                    b.HasIndex("ArtistId");
+
+                    b.ToTable("AlbumArtists", (string)null);
                 });
 
             modelBuilder.Entity("MusicApp.Domain.Entities.Artist", b =>
@@ -180,15 +195,15 @@ namespace MusicApp.Infrastructure.Migrations
                     b.Property<int?>("AlbumId")
                         .HasColumnType("int");
 
+                    b.Property<string>("AudioFilePath")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<int?>("CategoryId")
                         .HasColumnType("int");
 
                     b.Property<int>("DurationSeconds")
                         .HasColumnType("int");
-
-                    b.Property<string>("PreviewUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -245,6 +260,11 @@ namespace MusicApp.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("IsBlocked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -278,6 +298,25 @@ namespace MusicApp.Infrastructure.Migrations
                         .HasForeignKey("ArtistId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Artist");
+                });
+
+            modelBuilder.Entity("MusicApp.Domain.Entities.AlbumArtist", b =>
+                {
+                    b.HasOne("MusicApp.Domain.Entities.Album", "Album")
+                        .WithMany("AlbumArtists")
+                        .HasForeignKey("AlbumId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MusicApp.Domain.Entities.Artist", "Artist")
+                        .WithMany("AlbumArtists")
+                        .HasForeignKey("ArtistId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Album");
 
                     b.Navigation("Artist");
                 });
@@ -369,11 +408,15 @@ namespace MusicApp.Infrastructure.Migrations
 
             modelBuilder.Entity("MusicApp.Domain.Entities.Album", b =>
                 {
+                    b.Navigation("AlbumArtists");
+
                     b.Navigation("Tracks");
                 });
 
             modelBuilder.Entity("MusicApp.Domain.Entities.Artist", b =>
                 {
+                    b.Navigation("AlbumArtists");
+
                     b.Navigation("Albums");
 
                     b.Navigation("TrackArtists");

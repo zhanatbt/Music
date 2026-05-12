@@ -5,46 +5,35 @@ using MusicApp.Infrastructure.Data;
 
 namespace MusicApp.Infrastructure.Repositories;
 
-public class CategoryRepository : ICategoryRepository
+public class CategoryRepository(AppDbContext context) : ICategoryRepository
 {
-    private readonly AppDbContext _context;
+    public async Task<IReadOnlyList<Category>> GetAllAsync(CancellationToken ct = default)
+        => await context.Categories.OrderBy(x => x.Name).ToListAsync(ct);
 
-    public CategoryRepository(AppDbContext context)
+    public async Task<Category?> GetByIdAsync(int id, CancellationToken ct = default)
+        => await context.Categories.FirstOrDefaultAsync(x => x.Id == id, ct);
+
+    public async Task<Category?> GetByNameAsync(string name, CancellationToken ct = default)
+        => await context.Categories.FirstOrDefaultAsync(x => x.Name == name, ct);
+
+    public async Task AddAsync(Category category, CancellationToken ct = default)
     {
-        _context = context;
+        context.Categories.Add(category);
+        await context.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Category>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task UpdateAsync(Category category, CancellationToken ct = default)
     {
-        return await _context.Categories.OrderBy(x => x.Name).ToListAsync(cancellationToken);
+        context.Categories.Update(category);
+        await context.SaveChangesAsync(ct);
     }
 
-    public async Task<Category?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteByIdAsync(int id, CancellationToken ct = default)
     {
-        return await _context.Categories.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-    }
-
-    public async Task<Category?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
-    {
-        return await _context.Categories.FirstOrDefaultAsync(x => x.Name == name, cancellationToken);
-    }
-
-    public async Task AddAsync(Category category, CancellationToken cancellationToken = default)
-    {
-        _context.Categories.Add(category);
-        await _context.SaveChangesAsync(cancellationToken);
-    }
-
-    public async Task<bool> DeleteByIdAsync(int id, CancellationToken cancellationToken = default)
-    {
-        var category = await _context.Categories.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (category is null)
-        {
-            return false;
-        }
-
-        _context.Categories.Remove(category);
-        await _context.SaveChangesAsync(cancellationToken);
+        var category = await context.Categories.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (category is null) return false;
+        context.Categories.Remove(category);
+        await context.SaveChangesAsync(ct);
         return true;
     }
 }

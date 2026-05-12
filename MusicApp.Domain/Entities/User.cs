@@ -9,6 +9,7 @@ public class User
     public string PasswordHash { get; set; } = string.Empty;
     public string SecretWordHash { get; set; } = string.Empty;
     public UserRole Role { get; set; } = UserRole.User;
+    public bool IsBlocked { get; set; } = false;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     public ICollection<Playlist> Playlists { get; set; } = new List<Playlist>();

@@ -7,7 +7,7 @@ public class Track
     public int? AlbumId { get; set; }
     public int? CategoryId { get; set; }
     public int DurationSeconds { get; set; }
-    public string? PreviewUrl { get; set; }
+    public string? AudioFilePath { get; set; }
 
     public Album? Album { get; set; }
     public Category? Category { get; set; }

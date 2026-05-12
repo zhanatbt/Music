@@ -5,139 +5,74 @@ using MusicApp.Infrastructure.Data;
 
 namespace MusicApp.Infrastructure.Repositories;
 
-public class TrackRepository : ITrackRepository
+public class TrackRepository(AppDbContext context) : ITrackRepository
 {
-    private readonly AppDbContext _context;
+    public async Task<IReadOnlyList<Track>> GetAllAsync(CancellationToken ct = default)
+        => await IncludeGraph(context.Tracks).OrderBy(t => t.Title).ToListAsync(ct);
 
-    public TrackRepository(AppDbContext context)
+    public async Task<Track?> GetByIdAsync(int id, CancellationToken ct = default)
+        => await IncludeGraph(context.Tracks).FirstOrDefaultAsync(t => t.Id == id, ct);
+
+    public async Task<Track?> FindDuplicateAsync(string title, int artistId, int? albumId,
+        int? excludeTrackId = null, CancellationToken ct = default)
     {
-        _context = context;
-    }
-
-    public async Task<IReadOnlyList<Track>> GetAllAsync(CancellationToken cancellationToken = default)
-    {
-        return await IncludeGraph(_context.Tracks)
-            .OrderBy(t => t.Title)
-            .ToListAsync(cancellationToken);
-    }
-
-    public async Task<Track?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
-    {
-        return await IncludeGraph(_context.Tracks)
-            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
-    }
-
-    public async Task<Track?> FindDuplicateAsync(
-        string title,
-        int artistId,
-        int? albumId,
-        int? excludeTrackId = null,
-        CancellationToken cancellationToken = default)
-    {
-        var normalizedTitle = title.Trim();
-
-        var query = IncludeGraph(_context.Tracks).AsQueryable();
-
-        if (excludeTrackId.HasValue)
-        {
-            query = query.Where(t => t.Id != excludeTrackId.Value);
-        }
-
+        var normalized = title.Trim();
+        var query = IncludeGraph(context.Tracks).AsQueryable();
+        if (excludeTrackId.HasValue) query = query.Where(t => t.Id != excludeTrackId.Value);
         return await query.FirstOrDefaultAsync(
-            t => t.AlbumId == albumId &&
-                 t.Title == normalizedTitle &&
-                 t.TrackArtists.Any(ta => ta.ArtistId == artistId),
-            cancellationToken);
+            t => t.AlbumId == albumId && t.Title == normalized && t.TrackArtists.Any(ta => ta.ArtistId == artistId),
+            ct);
     }
 
-    public async Task<IReadOnlyList<Track>> SearchAsync(
-        string? query,
-        int? genreId,
-        int? categoryId,
-        string? album,
-        string? genre,
-        string? title,
-        string? artist,
-        CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Track>> SearchAsync(string? query, int? genreId, int? categoryId,
+        string? album, string? genre, string? title, string? artist, CancellationToken ct = default)
     {
-        var normalized = query?.Trim();
-        var normalizedAlbum = album?.Trim();
-        var normalizedGenre = genre?.Trim();
-        var normalizedTitle = title?.Trim();
-        var normalizedArtist = artist?.Trim();
-
-        var trackQuery = IncludeGraph(_context.Tracks).AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(normalizedTitle))
-        {
-            trackQuery = trackQuery.Where(t => t.Title.Contains(normalizedTitle));
-        }
-
-        if (!string.IsNullOrWhiteSpace(normalizedAlbum))
-        {
-            trackQuery = trackQuery.Where(t => t.Album != null && t.Album.Title.Contains(normalizedAlbum));
-        }
-
-        if (!string.IsNullOrWhiteSpace(normalizedArtist))
-        {
-            trackQuery = trackQuery.Where(t => t.TrackArtists.Any(ta => ta.Artist != null && ta.Artist.Name.Contains(normalizedArtist)));
-        }
-
-        if (!string.IsNullOrWhiteSpace(normalizedGenre))
-        {
-            trackQuery = trackQuery.Where(t => t.TrackGenres.Any(tg => tg.Genre != null && tg.Genre.Name.Contains(normalizedGenre)));
-        }
-
-        if (!string.IsNullOrWhiteSpace(normalized))
-        {
+        var trackQuery = IncludeGraph(context.Tracks).AsQueryable();
+        if (!string.IsNullOrWhiteSpace(title)) trackQuery = trackQuery.Where(t => t.Title.Contains(title.Trim()));
+        if (!string.IsNullOrWhiteSpace(album))
+            trackQuery = trackQuery.Where(t => t.Album != null && t.Album.Title.Contains(album.Trim()));
+        if (!string.IsNullOrWhiteSpace(artist))
             trackQuery = trackQuery.Where(t =>
-                t.Title.Contains(normalized) ||
-                t.TrackArtists.Any(ta => ta.Artist != null && ta.Artist.Name.Contains(normalized)) ||
-                (t.Album != null && t.Album.Title.Contains(normalized)) ||
-                t.TrackGenres.Any(tg => tg.Genre != null && tg.Genre.Name.Contains(normalized)) ||
-                (t.Category != null && t.Category.Name.Contains(normalized)));
-        }
-
-        if (genreId.HasValue)
+                t.TrackArtists.Any(ta => ta.Artist != null && ta.Artist.Name.Contains(artist.Trim())));
+        if (!string.IsNullOrWhiteSpace(genre))
+            trackQuery = trackQuery.Where(t =>
+                t.TrackGenres.Any(tg => tg.Genre != null && tg.Genre.Name.Contains(genre.Trim())));
+        if (!string.IsNullOrWhiteSpace(query))
         {
-            trackQuery = trackQuery.Where(t => t.TrackGenres.Any(tg => tg.GenreId == genreId.Value));
+            var norm = query.Trim();
+            trackQuery = trackQuery.Where(t =>
+                t.Title.Contains(norm) ||
+                t.TrackArtists.Any(ta => ta.Artist != null && ta.Artist.Name.Contains(norm)) ||
+                (t.Album != null && t.Album.Title.Contains(norm)) ||
+                t.TrackGenres.Any(tg => tg.Genre != null && tg.Genre.Name.Contains(norm)) ||
+                (t.Category != null && t.Category.Name.Contains(norm)));
         }
 
-        if (categoryId.HasValue)
-        {
-            trackQuery = trackQuery.Where(t => t.CategoryId == categoryId.Value);
-        }
-
-        return await trackQuery
-            .OrderBy(t => t.Title)
-            .ToListAsync(cancellationToken);
+        if (genreId.HasValue) trackQuery = trackQuery.Where(t => t.TrackGenres.Any(tg => tg.GenreId == genreId.Value));
+        if (categoryId.HasValue) trackQuery = trackQuery.Where(t => t.CategoryId == categoryId.Value);
+        return await trackQuery.OrderBy(t => t.Title).ToListAsync(ct);
     }
 
-    public async Task AddAsync(Track track, CancellationToken cancellationToken = default)
+    public async Task AddAsync(Track track, CancellationToken ct = default)
     {
-        _context.Tracks.Add(track);
-        await _context.SaveChangesAsync(cancellationToken);
+        context.Tracks.Add(track);
+        await context.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateAsync(Track track, CancellationToken cancellationToken = default)
-    {
-        await _context.SaveChangesAsync(cancellationToken);
-    }
+    public async Task UpdateAsync(Track track, CancellationToken ct = default)
+        => await context.SaveChangesAsync(ct);
 
-    public async Task DeleteAsync(Track track, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(Track track, CancellationToken ct = default)
     {
-        _context.Tracks.Remove(track);
-        await _context.SaveChangesAsync(cancellationToken);
+        context.Tracks.Remove(track);
+        await context.SaveChangesAsync(ct);
     }
 
     private static IQueryable<Track> IncludeGraph(IQueryable<Track> query)
-    {
-        return query
+        => query
             .Include(t => t.Album)
-            .Include(t => t.TrackArtists)
-                .ThenInclude(x => x.Artist)
-            .Include(t => t.TrackGenres)
-                .ThenInclude(x => x.Genre)
-            .Include(t => t.Category);
-    }
+            .Include(t => t.TrackArtists).ThenInclude(x => x.Artist)
+            .Include(t => t.TrackGenres).ThenInclude(x => x.Genre)
+            .Include(t => t.Category)
+            .Include(t => t.PlaylistTracks);
 }

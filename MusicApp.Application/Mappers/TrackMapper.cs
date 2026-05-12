@@ -22,7 +22,7 @@ public static class TrackMapper
                 .OrderBy(x => x)),
             Category = track.Category?.Name ?? string.Empty,
             DurationSeconds = track.DurationSeconds,
-            PreviewUrl = track.PreviewUrl
+            PreviewUrl = track.AudioFilePath
         };
     }
 }

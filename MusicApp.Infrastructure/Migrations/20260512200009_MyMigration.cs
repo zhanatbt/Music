@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace MusicApp.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class MyMigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -60,6 +60,7 @@ namespace MusicApp.Infrastructure.Migrations
                     PasswordHash = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
                     SecretWordHash = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
                     Role = table.Column<int>(type: "int", nullable: false),
+                    IsBlocked = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
@@ -110,6 +111,29 @@ namespace MusicApp.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "AlbumArtists",
+                columns: table => new
+                {
+                    AlbumId = table.Column<int>(type: "int", nullable: false),
+                    ArtistId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AlbumArtists", x => new { x.AlbumId, x.ArtistId });
+                    table.ForeignKey(
+                        name: "FK_AlbumArtists_Albums_AlbumId",
+                        column: x => x.AlbumId,
+                        principalTable: "Albums",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_AlbumArtists_Artists_ArtistId",
+                        column: x => x.ArtistId,
+                        principalTable: "Artists",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Tracks",
                 columns: table => new
                 {
@@ -119,7 +143,7 @@ namespace MusicApp.Infrastructure.Migrations
                     AlbumId = table.Column<int>(type: "int", nullable: true),
                     CategoryId = table.Column<int>(type: "int", nullable: true),
                     DurationSeconds = table.Column<int>(type: "int", nullable: false),
-                    PreviewUrl = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true)
+                    AudioFilePath = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -214,6 +238,11 @@ namespace MusicApp.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_AlbumArtists_ArtistId",
+                table: "AlbumArtists",
+                column: "ArtistId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Albums_ArtistId",
                 table: "Albums",
                 column: "ArtistId");
@@ -287,6 +316,9 @@ namespace MusicApp.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "AlbumArtists");
+
             migrationBuilder.DropTable(
                 name: "PlaylistTracks");
 

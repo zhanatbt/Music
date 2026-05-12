@@ -93,7 +93,9 @@ public class MainForm : Form, IMainView
             Left = 1095,
             Top = 12,
             Width = 165,
-            Height = 54
+            Height = 54,
+            BackColor = AppleMusicTheme.Accent,
+            Font = new Font("Segoe UI", 9f, FontStyle.Bold)
         };
 
         header.Controls.AddRange([lblMode, _cmbPlaybackMode, btnPlayPlaylist, btnAddToPlaylist]);
@@ -204,12 +206,6 @@ public class MainForm : Form, IMainView
             Dock = DockStyle.Top,
             Height = 25
         };
-        var hintLabel = new Label
-        {
-            Text = "Выбери плейлист ниже. Его треки появятся в нижней таблице.",
-            Dock = DockStyle.Fill
-        };
-        topPanel.Controls.Add(hintLabel);
         topPanel.Controls.Add(titleLabel);
 
         var bottomPanel = new Panel { Dock = DockStyle.Bottom, Height = 120, Padding = new Padding(5) };
@@ -260,7 +256,7 @@ public class MainForm : Form, IMainView
         _gridPlaylists.Columns.Add(new DataGridViewTextBoxColumn
         {
             DataPropertyName = nameof(PlaylistDto.TrackCount),
-            HeaderText = "Треков",
+            HeaderText = "Треки",
             Width = 70
         });
         _gridPlaylists.SelectionChanged += GridPlaylists_SelectionChanged;

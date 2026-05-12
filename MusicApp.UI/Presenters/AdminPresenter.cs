@@ -1,316 +1,462 @@
 ﻿using MusicApp.Application.DTOs;
 using MusicApp.Application.Services;
+using MusicApp.UI.Views;
 
 namespace MusicApp.UI.Presenters;
 
-public class AdminPresenter
+public class AdminPresenter(IAdminView view, AdminCatalogService catalogService)
 {
-    private readonly IAdminView _view;
-    private readonly AdminCatalogService _catalogService;
-    private readonly SemaphoreSlim _operationLock = new(1, 1);
+    private readonly SemaphoreSlim _lock = new(1, 1);
 
-    public AdminPresenter(IAdminView view, AdminCatalogService catalogService)
-    {
-        _view = view;
-        _catalogService = catalogService;
-    }
-
-    public async Task LoadAsync()
-    {
-        await ExecuteSerializedAsync(ReloadAsync);
-    }
-
-    public async Task AddGenreAsync()
-    {
-        var result = await _catalogService.AddGenreAsync(_view.GenreName);
-        _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
-        if (result.Success)
-        {
-            await ReloadAsync();
-        }
-    }
+    public async Task LoadAsync() => await Exec(ReloadAsync);
 
     public async Task AddGenreLookupAsync()
     {
-        var result = await _catalogService.AddGenreAsync(_view.NewGenreName);
-        _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
-        if (result.Success)
+        var r = await catalogService.AddGenreAsync(view.NewGenreName);
+        view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
+        if (r.Success)
         {
-            _view.ClearNewGenreInput();
-            await ReloadAsync();
+            view.ClearNewGenreInput();
+            await Exec(ReloadAsync);
+        }
+    }
+
+    public async Task RenameSelectedGenreAsync()
+    {
+        if (!view.SelectedGenreLookupId.HasValue)
+        {
+            view.ShowMessage("Выберите жанр.", "Ошибка");
+            return;
+        }
+
+        var newName = view.NewGenreName;
+        if (string.IsNullOrWhiteSpace(newName))
+        {
+            view.ShowMessage("Введите новое название.", "Ошибка");
+            return;
+        }
+
+        var r = await catalogService.UpdateGenreAsync(view.SelectedGenreLookupId.Value, newName);
+        view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
+        if (r.Success)
+        {
+            view.ClearNewGenreInput();
+            await Exec(ReloadAsync);
         }
     }
 
     public async Task DeleteSelectedGenreLookupAsync()
     {
-        if (!_view.SelectedGenreLookupId.HasValue)
+        if (!view.SelectedGenreLookupId.HasValue)
         {
-            _view.ShowMessage("Выберите жанр в таблице.", "Ошибка");
+            view.ShowMessage("Выберите жанр.", "Ошибка");
             return;
         }
 
-        var result = await _catalogService.DeleteGenreAsync(_view.SelectedGenreLookupId.Value);
-        _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
-        if (result.Success)
-        {
-            await ReloadAsync();
-        }
-    }
-
-    public async Task AddCategoryAsync()
-    {
-        var result = await _catalogService.AddCategoryAsync(_view.CategoryName);
-        _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
-        if (result.Success)
-        {
-            await ReloadAsync();
-        }
+        var r = await catalogService.DeleteGenreAsync(view.SelectedGenreLookupId.Value);
+        view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
+        if (r.Success) await Exec(ReloadAsync);
     }
 
     public async Task AddCategoryLookupAsync()
     {
-        var result = await _catalogService.AddCategoryAsync(_view.NewCategoryName);
-        _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
-        if (result.Success)
+        var r = await catalogService.AddCategoryAsync(view.NewCategoryName);
+        view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
+        if (r.Success)
         {
-            _view.ClearNewCategoryInput();
-            await ReloadAsync();
+            view.ClearNewCategoryInput();
+            await Exec(ReloadAsync);
+        }
+    }
+
+    public async Task RenameSelectedCategoryAsync()
+    {
+        if (!view.SelectedCategoryLookupId.HasValue)
+        {
+            view.ShowMessage("Выберите категорию.", "Ошибка");
+            return;
+        }
+
+        var newName = view.NewCategoryName;
+        if (string.IsNullOrWhiteSpace(newName))
+        {
+            view.ShowMessage("Введите новое название.", "Ошибка");
+            return;
+        }
+
+        var r = await catalogService.UpdateCategoryAsync(view.SelectedCategoryLookupId.Value, newName);
+        view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
+        if (r.Success)
+        {
+            view.ClearNewCategoryInput();
+            await Exec(ReloadAsync);
         }
     }
 
     public async Task DeleteSelectedCategoryLookupAsync()
     {
-        if (!_view.SelectedCategoryLookupId.HasValue)
+        if (!view.SelectedCategoryLookupId.HasValue)
         {
-            _view.ShowMessage("Выберите категорию в таблице.", "Ошибка");
+            view.ShowMessage("Выберите категорию.", "Ошибка");
             return;
         }
 
-        var result = await _catalogService.DeleteCategoryAsync(_view.SelectedCategoryLookupId.Value);
-        _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
-        if (result.Success)
-        {
-            await ReloadAsync();
-        }
+        var r = await catalogService.DeleteCategoryAsync(view.SelectedCategoryLookupId.Value);
+        view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
+        if (r.Success) await Exec(ReloadAsync);
     }
 
     public async Task AddArtistLookupAsync()
     {
-        var result = await _catalogService.AddArtistAsync(_view.NewArtistName);
-        _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
-        if (result.Success)
+        var r = await catalogService.AddArtistAsync(view.NewArtistName);
+        view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
+        if (r.Success)
         {
-            _view.ClearNewArtistInput();
-            await ReloadAsync();
+            view.ClearNewArtistInput();
+            await Exec(ReloadAsync);
+        }
+    }
+
+    public async Task RenameSelectedArtistAsync()
+    {
+        if (!view.SelectedArtistLookupId.HasValue)
+        {
+            view.ShowMessage("Выберите исполнителя.", "Ошибка");
+            return;
+        }
+
+        var newName = view.NewArtistName;
+        if (string.IsNullOrWhiteSpace(newName))
+        {
+            view.ShowMessage("Введите новое имя.", "Ошибка");
+            return;
+        }
+
+        var r = await catalogService.UpdateArtistAsync(view.SelectedArtistLookupId.Value, newName);
+        view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
+        if (r.Success)
+        {
+            view.ClearNewArtistInput();
+            await Exec(ReloadAsync);
         }
     }
 
     public async Task DeleteSelectedArtistLookupAsync()
     {
-        if (!_view.SelectedArtistLookupId.HasValue)
+        if (!view.SelectedArtistLookupId.HasValue)
         {
-            _view.ShowMessage("Выберите исполнителя в таблице.", "Ошибка");
+            view.ShowMessage("Выберите исполнителя.", "Ошибка");
             return;
         }
 
-        var result = await _catalogService.DeleteArtistAsync(_view.SelectedArtistLookupId.Value);
-        _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
-        if (result.Success)
-        {
-            await ReloadAsync();
-        }
+        var r = await catalogService.DeleteArtistAsync(view.SelectedArtistLookupId.Value);
+        view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
+        if (r.Success) await Exec(ReloadAsync);
     }
 
     public async Task ImportAudioFileAsync()
     {
-        var filePath = _view.PickAudioFile();
-        if (string.IsNullOrWhiteSpace(filePath))
-        {
-            return;
-        }
-
-        var metadata = await _catalogService.ReadAudioMetadataAsync(filePath);
-        _view.ApplyAudioMetadata(metadata);
-        _view.TrySelectGenreByName(metadata.GenreName);
+        var filePath = view.PickAudioFile();
+        if (string.IsNullOrWhiteSpace(filePath)) return;
+        var metadata = await catalogService.ReadAudioMetadataAsync(filePath);
+        view.ApplyAudioMetadata(metadata);
+        view.TrySelectGenreByName(metadata.GenreName);
     }
 
     public async Task AddManualTrackAsync()
     {
-        var request = new TrackCreateDto
+        var request = BuildTrackRequest();
+        var r = await catalogService.AddTrackAsync(request);
+        view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
+        if (r.Success)
         {
-            Title = _view.TrackTitle,
-            ArtistName = _view.ArtistName,
-            ArtistNames = _view.SelectedArtistNames,
-            AlbumTitle = _view.AlbumTitle,
-            DurationSeconds = _view.DurationSeconds,
-            GenreId = _view.SelectedGenreId ?? 0,
-            GenreName = _view.GenreName,
-            GenreNames = _view.SelectedGenreNames,
-            CategoryId = _view.SelectedCategoryId,
-            CategoryName = _view.CategoryName,
-            AudioFilePath = _view.ImportedAudioFilePath,
-            SourceType = !string.IsNullOrWhiteSpace(_view.ImportedAudioFilePath) ? "LocalFile" : "Manual"
-        };
-
-        var result = await _catalogService.AddTrackAsync(request);
-        _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
-        if (result.Success)
-        {
-            _view.ClearEntryFields();
-            await ReloadAsync();
+            view.ClearEntryFields();
+            await Exec(ReloadAsync);
         }
     }
 
     public void LoadSelectedTrackIntoEditor()
     {
-        if (_view.SelectedTrack is null)
+        if (view.SelectedTrack is null)
         {
-            _view.ShowMessage("Выберите трек в таблице каталога.", "Ошибка");
+            view.ShowMessage("Выберите трек.", "Ошибка");
             return;
         }
 
-        _view.LoadTrackIntoEditor(_view.SelectedTrack);
+        view.LoadTrackIntoEditor(view.SelectedTrack);
     }
 
     public async Task UpdateSelectedTrackAsync()
     {
-        if (!_view.EditingTrackId.HasValue)
+        if (!view.EditingTrackId.HasValue)
         {
-            _view.ShowMessage("Сначала загрузите трек в редактор кнопкой заполнения.", "Ошибка");
+            view.ShowMessage("Сначала загрузите трек в редактор.", "Ошибка");
             return;
         }
 
-        var request = new TrackCreateDto
+        var request = BuildTrackRequest();
+        var r = await catalogService.UpdateTrackAsync(view.EditingTrackId.Value, request);
+        view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
+        if (r.Success)
         {
-            Title = _view.TrackTitle,
-            ArtistName = _view.ArtistName,
-            ArtistNames = _view.SelectedArtistNames,
-            AlbumTitle = _view.AlbumTitle,
-            DurationSeconds = _view.DurationSeconds,
-            GenreId = _view.SelectedGenreId ?? 0,
-            GenreName = _view.GenreName,
-            GenreNames = _view.SelectedGenreNames,
-            CategoryId = _view.SelectedCategoryId,
-            CategoryName = _view.CategoryName,
-            AudioFilePath = _view.ImportedAudioFilePath,
-            SourceType = !string.IsNullOrWhiteSpace(_view.ImportedAudioFilePath) ? "LocalFile" : "Manual"
-        };
-
-        var result = await _catalogService.UpdateTrackAsync(_view.EditingTrackId.Value, request);
-        _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
-        if (result.Success)
-        {
-            _view.ClearEntryFields();
-            await ReloadAsync();
+            view.ClearEntryFields();
+            await Exec(ReloadAsync);
         }
     }
 
     public async Task DeleteSelectedTrackAsync()
     {
-        if (_view.SelectedTrack is null)
+        if (view.SelectedTrack is null)
         {
-            _view.ShowMessage("Выберите трек в таблице каталога.", "Ошибка");
+            view.ShowMessage("Выберите трек.", "Ошибка");
             return;
         }
 
-        var result = await _catalogService.DeleteTrackAsync(_view.SelectedTrack.Id);
-        _view.ShowMessage(result.Message, result.Success ? "Успех" : "Ошибка");
-        if (result.Success)
+        var r = await catalogService.DeleteTrackAsync(view.SelectedTrack.Id);
+        view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
+        if (r.Success)
         {
-            _view.ClearEntryFields();
-            await ReloadAsync();
+            view.ClearEntryFields();
+            await Exec(ReloadAsync);
         }
     }
 
     public async Task SearchTracksAsync()
     {
-        var tracks = await _catalogService.SearchTracksAsync(
-            album: _view.TrackSearchAlbum,
-            genre: _view.TrackSearchGenre,
-            title: _view.TrackSearchTitle,
-            artist: _view.TrackSearchArtist);
-        _view.SetTracks(tracks);
-    }
-
-    public async Task UserSelectionChangedAsync()
-    {
-        await ExecuteSerializedAsync(async () =>
-        {
-            if (_view.SelectedUser is null)
-            {
-                _view.SetUserPlaylists([]);
-                _view.SetSelectedUserPlaylistTracks([]);
-                return;
-            }
-
-            var playlists = await _catalogService.GetUserPlaylistsAsync(_view.SelectedUser.UserId);
-            _view.SetUserPlaylists(playlists);
-            _view.SetSelectedUserPlaylistTracks([]);
-        });
-    }
-
-    public async Task UserPlaylistSelectionChangedAsync()
-    {
-        await ExecuteSerializedAsync(async () =>
-        {
-            if (_view.SelectedUserPlaylist is null)
-            {
-                _view.SetSelectedUserPlaylistTracks([]);
-                return;
-            }
-
-            var tracks = await _catalogService.GetPlaylistTracksAsync(_view.SelectedUserPlaylist.Id);
-            _view.SetSelectedUserPlaylistTracks(tracks);
-        });
+        var tracks = await catalogService.SearchTracksAsync(
+            album: view.TrackSearchAlbum, genre: view.TrackSearchGenre,
+            title: view.TrackSearchTitle, artist: view.TrackSearchArtist);
+        view.SetTracks(tracks);
     }
 
     public Task PlaySelectedTrackAsync()
     {
-        if (_view.SelectedTrack is null)
+        if (view.SelectedTrack is null)
         {
-            _view.ShowMessage("Выберите трек в каталоге.", "Ошибка");
+            view.ShowMessage("Выберите трек.", "Ошибка");
             return Task.CompletedTask;
         }
 
-        if (string.IsNullOrWhiteSpace(_view.SelectedTrack.PreviewUrl))
+        if (string.IsNullOrWhiteSpace(view.SelectedTrack.PreviewUrl))
         {
-            _view.ShowMessage("У выбранного трека нет ссылки или файла для воспроизведения.", "Информация");
+            view.ShowMessage("У трека нет файла для воспроизведения.", "Информация");
             return Task.CompletedTask;
         }
 
-        _view.PlayPreview(_view.SelectedTrack.PreviewUrl, $"{_view.SelectedTrack.Artist} - {_view.SelectedTrack.Title}");
+        view.PlayPreview(view.SelectedTrack.PreviewUrl, $"{view.SelectedTrack.Artist} — {view.SelectedTrack.Title}");
         return Task.CompletedTask;
     }
 
+    public async Task UserSelectionChangedAsync() => await Exec(async () =>
+    {
+        if (view.SelectedUser is null)
+        {
+            view.SetUserPlaylists([]);
+            view.SetSelectedUserPlaylistTracks([]);
+            return;
+        }
+
+        var playlists = await catalogService.GetUserPlaylistsAsync(view.SelectedUser.UserId);
+        view.SetUserPlaylists(playlists);
+        view.SetSelectedUserPlaylistTracks([]);
+    });
+
+    public async Task UserPlaylistSelectionChangedAsync() => await Exec(async () =>
+    {
+        if (view.SelectedUserPlaylist is null)
+        {
+            view.SetSelectedUserPlaylistTracks([]);
+            return;
+        }
+
+        view.SetSelectedUserPlaylistTracks(await catalogService.GetPlaylistTracksAsync(view.SelectedUserPlaylist.Id));
+    });
+
+    public async Task BlockSelectedUserAsync()
+    {
+        if (view.SelectedUser is null)
+        {
+            view.ShowMessage("Выберите пользователя.", "Ошибка");
+            return;
+        }
+
+        var r = await catalogService.BlockUserAsync(view.SelectedUser.UserId);
+        view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
+        if (r.Success) await Exec(ReloadAsync);
+    }
+
+    public async Task UnblockSelectedUserAsync()
+    {
+        if (view.SelectedUser is null)
+        {
+            view.ShowMessage("Выберите пользователя.", "Ошибка");
+            return;
+        }
+
+        var r = await catalogService.UnblockUserAsync(view.SelectedUser.UserId);
+        view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
+        if (r.Success) await Exec(ReloadAsync);
+    }
+
+    public async Task AlbumSelectionChangedAsync() => await Exec(async () =>
+    {
+        if (view.SelectedAlbumId is null)
+        {
+            view.SetAlbumTracks([]);
+            return;
+        }
+
+        view.SetAlbumTracks(await catalogService.GetAlbumTracksAsync(view.SelectedAlbumId.Value));
+    });
+
+    public async Task AddAlbumAsync()
+    {
+        var r = await catalogService.AddAlbumAsync(view.NewAlbumTitle, view.SelectedAlbumArtistNames);
+        view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
+        if (r.Success)
+        {
+            view.ClearAlbumFields();
+            await Exec(ReloadAsync);
+        }
+    }
+
+    public async Task UpdateSelectedAlbumAsync()
+    {
+        if (!view.EditingAlbumId.HasValue)
+        {
+            view.ShowMessage("Сначала загрузите альбом в редактор.", "Ошибка");
+            return;
+        }
+
+        var r = await catalogService.UpdateAlbumAsync(view.EditingAlbumId.Value, view.NewAlbumTitle,
+            view.SelectedAlbumArtistNames);
+        view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
+        if (r.Success)
+        {
+            view.ClearAlbumFields();
+            await Exec(ReloadAsync);
+        }
+    }
+
+    public async Task DeleteSelectedAlbumAsync()
+    {
+        if (view.SelectedAlbumId is null)
+        {
+            view.ShowMessage("Выберите альбом.", "Ошибка");
+            return;
+        }
+
+        var r = await catalogService.DeleteAlbumAsync(view.SelectedAlbumId.Value);
+        view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
+        if (r.Success)
+        {
+            view.ClearAlbumFields();
+            await Exec(ReloadAsync);
+        }
+    }
+
+    public void LoadSelectedAlbumIntoEditor()
+    {
+        if (view.SelectedAlbumId is null)
+        {
+            view.ShowMessage("Выберите альбом.", "Ошибка");
+            return;
+        }
+
+        view.LoadAlbumIntoEditor(null!);
+    }
+
+    public async Task AddTrackToAlbumAsync()
+    {
+        if (view.SelectedAlbumId is null)
+        {
+            view.ShowMessage("Выберите альбом.", "Ошибка");
+            return;
+        }
+
+        if (view.SelectedTrackForAlbumId is null)
+        {
+            view.ShowMessage("Выберите трек из каталога.", "Ошибка");
+            return;
+        }
+
+        var r = await catalogService.AddTrackToAlbumAsync(view.SelectedAlbumId.Value,
+            view.SelectedTrackForAlbumId.Value);
+        view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
+        if (r.Success)
+            await Exec(async () =>
+                view.SetAlbumTracks(await catalogService.GetAlbumTracksAsync(view.SelectedAlbumId!.Value)));
+    }
+
+    public async Task RemoveTrackFromAlbumAsync()
+    {
+        if (view.SelectedAlbumId is null)
+        {
+            view.ShowMessage("Выберите альбом.", "Ошибка");
+            return;
+        }
+
+        if (view.SelectedAlbumTrackId is null)
+        {
+            view.ShowMessage("Выберите трек в таблице альбома.", "Ошибка");
+            return;
+        }
+
+        var r = await catalogService.RemoveTrackFromAlbumAsync(view.SelectedAlbumId.Value,
+            view.SelectedAlbumTrackId.Value);
+        view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
+        if (r.Success)
+            await Exec(async () =>
+                view.SetAlbumTracks(await catalogService.GetAlbumTracksAsync(view.SelectedAlbumId!.Value)));
+    }
+
+    private TrackCreateDto BuildTrackRequest() => new()
+    {
+        Title = view.TrackTitle,
+        ArtistName = view.ArtistName,
+        ArtistNames = view.SelectedArtistNames,
+        AlbumTitle = view.AlbumTitle,
+        DurationSeconds = view.DurationSeconds,
+        GenreId = view.SelectedGenreId ?? 0,
+        GenreName = view.GenreName,
+        GenreNames = view.SelectedGenreNames,
+        CategoryId = view.SelectedCategoryId,
+        CategoryName = view.CategoryName,
+        AudioFilePath = view.ImportedAudioFilePath
+    };
 
     private async Task ReloadAsync()
     {
-        var genres = await _catalogService.GetGenresAsync();
-        var artists = await _catalogService.GetArtistsAsync();
-        var categories = await _catalogService.GetCategoriesAsync();
+        var genres = await catalogService.GetGenresAsync();
+        var artists = await catalogService.GetArtistsAsync();
+        var categories = await catalogService.GetCategoriesAsync();
+        var albums = await catalogService.GetAlbumsAsync();
 
-        _view.SetGenres(genres);
-        _view.SetArtists(artists);
-        _view.SetCategoryLookupItems(categories);
-        _view.SetGenreLookupItems(genres);
-        _view.SetArtistLookupItems(artists);
-        _view.SetCategories(categories);
-        _view.SetTracks(await _catalogService.GetTracksAsync());
-        _view.SetUsers(await _catalogService.GetUsersAsync());
-        _view.SetUserPlaylists([]);
-        _view.SetSelectedUserPlaylistTracks([]);
+        view.SetGenres(genres);
+        view.SetArtists(artists);
+        view.SetCategories(categories);
+        view.SetCategoryLookupItems(categories);
+        view.SetGenreLookupItems(genres);
+        view.SetArtistLookupItems(artists);
+        view.SetAlbumArtists(artists);
+        view.SetTracks(await catalogService.GetTracksAsync());
+        view.SetUsers(await catalogService.GetUsersAsync());
+        view.SetAlbums(albums);
+        view.SetAlbumTracks([]);
+        view.SetUserPlaylists([]);
+        view.SetSelectedUserPlaylistTracks([]);
     }
 
-    private async Task ExecuteSerializedAsync(Func<Task> action)
+    private async Task Exec(Func<Task> action)
     {
-        await _operationLock.WaitAsync();
+        await _lock.WaitAsync();
         try
         {
             await action();
         }
         finally
         {
-            _operationLock.Release();
+            _lock.Release();
         }
     }
 }

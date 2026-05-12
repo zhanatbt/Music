@@ -8,5 +8,6 @@ public interface IGenreRepository
     Task<Genre?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
     Task<Genre?> GetByNameAsync(string name, CancellationToken cancellationToken = default);
     Task AddAsync(Genre genre, CancellationToken cancellationToken = default);
+    Task UpdateAsync(Genre genre, CancellationToken cancellationToken = default);
     Task<bool> DeleteByIdAsync(int id, CancellationToken cancellationToken = default);
 }
