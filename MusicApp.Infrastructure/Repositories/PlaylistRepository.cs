@@ -20,15 +20,22 @@ public class PlaylistRepository(AppDbContext context) : IPlaylistRepository
             .FirstOrDefaultAsync(x => x.Id == playlistId, ct);
 
     public async Task<IReadOnlyList<Track>> GetTracksByPlaylistIdAsync(int playlistId, CancellationToken ct = default)
-        => await context.PlaylistTracks
+    {
+        var trackIds = await context.PlaylistTracks
             .Where(x => x.PlaylistId == playlistId)
-            .Include(x => x.Track)!.ThenInclude(x => x!.Album)
-            .Include(x => x.Track)!.ThenInclude(x => x!.TrackArtists).ThenInclude(x => x.Artist)
-            .Include(x => x.Track)!.ThenInclude(x => x!.TrackGenres).ThenInclude(x => x.Genre)
-            .Include(x => x.Track)!.ThenInclude(x => x!.Category)
             .OrderBy(x => x.AddedAtUtc)
-            .Select(x => x.Track!)
+            .Select(x => x.TrackId)
             .ToListAsync(ct);
+
+        return await context.Tracks
+            .Include(t => t.TrackAlbums).ThenInclude(ta => ta.Album)
+            .Include(t => t.TrackArtists).ThenInclude(ta => ta.Artist)
+            .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+            .Include(t => t.Category)
+            .Include(t => t.PlaylistTracks)
+            .Where(t => trackIds.Contains(t.Id))
+            .ToListAsync(ct);
+    }
 
     public async Task AddAsync(Playlist playlist, CancellationToken ct = default)
     {

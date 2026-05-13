@@ -146,7 +146,9 @@ public class AdminCatalogService(
     public async Task<IReadOnlyList<TrackDto>> GetAlbumTracksAsync(int albumId, CancellationToken ct = default)
     {
         var album = await albumRepository.GetByIdWithDetailsAsync(albumId, ct);
-        return album is null ? [] : NormalizeTrackPreviewUrls(album.Tracks.ToList());
+        if (album is null) return [];
+        var tracks = album.TrackAlbums.Where(ta => ta.Track is not null).Select(ta => ta.Track!).ToList();
+        return NormalizeTrackPreviewUrls(tracks);
     }
 
     public async Task<OperationResult> AddAlbumAsync(string title, IReadOnlyList<string> artistNames,
@@ -211,7 +213,7 @@ public class AdminCatalogService(
     {
         var album = await albumRepository.GetByIdWithDetailsAsync(albumId, ct);
         if (album is null) return OperationResult.Fail("Альбом не найден.");
-        if (album.Tracks.Any())
+        if (album.TrackAlbums.Count != 0)
             return OperationResult.Fail("Нельзя удалить альбом: сначала уберите все треки из альбома.");
         var deleted = await albumRepository.DeleteByIdAsync(albumId, ct);
         return deleted ? OperationResult.Ok("Альбом удалён.") : OperationResult.Fail("Альбом не найден.");
@@ -221,29 +223,22 @@ public class AdminCatalogService(
     {
         var album = await albumRepository.GetByIdWithDetailsAsync(albumId, ct);
         if (album is null) return OperationResult.Fail("Альбом не найден.");
-
         var track = await trackRepository.GetByIdAsync(trackId, ct);
         if (track is null) return OperationResult.Fail("Трек не найден.");
-
-        if (album.Tracks.Any(t => t.Id == trackId))
+        if (album.TrackAlbums.Any(ta => ta.TrackId == trackId))
             return OperationResult.Fail("Этот трек уже есть в альбоме.");
-
-        track.AlbumId = albumId;
-        track.Album = album;
-        await trackRepository.UpdateAsync(track, ct);
+        await albumRepository.AddTrackAsync(albumId, trackId, ct);
         return OperationResult.Ok("Трек добавлен в альбом.");
     }
 
     public async Task<OperationResult> RemoveTrackFromAlbumAsync(int albumId, int trackId,
         CancellationToken ct = default)
     {
-        var track = await trackRepository.GetByIdAsync(trackId, ct);
-        if (track is null) return OperationResult.Fail("Трек не найден.");
-        if (track.AlbumId != albumId) return OperationResult.Fail("Трек не принадлежит этому альбому.");
-
-        track.AlbumId = null;
-        track.Album = null;
-        await trackRepository.UpdateAsync(track, ct);
+        var album = await albumRepository.GetByIdWithDetailsAsync(albumId, ct);
+        if (album is null) return OperationResult.Fail("Альбом не найден.");
+        if (album.TrackAlbums.All(ta => ta.TrackId != trackId))
+            return OperationResult.Fail("Трек не принадлежит этому альбому.");
+        await albumRepository.RemoveTrackAsync(albumId, trackId, ct);
         return OperationResult.Ok("Трек удалён из альбома.");
     }
 
@@ -278,26 +273,16 @@ public class AdminCatalogService(
 
         var primaryArtist = artists[0];
 
-        Album? album = null;
-        if (!string.IsNullOrWhiteSpace(request.AlbumTitle))
-        {
-            var norm = request.AlbumTitle.Trim();
-            album = await albumRepository.GetByTitleAndArtistAsync(norm, primaryArtist.Id, ct)
-                    ?? await CreateAlbumAsync(norm, primaryArtist, ct);
-        }
-
-        var duplicate = await trackRepository.FindDuplicateAsync(request.Title, primaryArtist.Id, album?.Id, null, ct);
+        var duplicate = await trackRepository.FindDuplicateAsync(request.Title, primaryArtist.Id, null, ct);
         if (duplicate is not null) return OperationResult.Fail("Такой трек уже есть в каталоге.");
 
         string? playbackSource = null;
-
         if (!string.IsNullOrWhiteSpace(request.AudioFilePath))
             playbackSource = await fileStorageService.SaveAsync(request.AudioFilePath, ct);
 
         var track = new Track
         {
             Title = request.Title.Trim(),
-            AlbumId = album?.Id,
             CategoryId = category?.Id,
             DurationSeconds = request.DurationSeconds,
             AudioFilePath = playbackSource,
@@ -306,7 +291,25 @@ public class AdminCatalogService(
         };
 
         await trackRepository.AddAsync(track, ct);
-        return OperationResult.Ok("Трек добавлен.");
+
+        var albumErrors = new List<string>();
+        foreach (var albumId in request.AlbumIds.Distinct())
+        {
+            var validationError = await ValidateTrackArtistsMatchAlbumAsync(albumId, artists, ct);
+            if (validationError is not null)
+            {
+                albumErrors.Add(validationError);
+                continue;
+            }
+
+            await albumRepository.AddTrackAsync(albumId, track.Id, ct);
+        }
+
+        var message = "Трек добавлен.";
+        if (albumErrors.Count > 0)
+            message += $" Не добавлен в некоторые альбомы: {string.Join("; ", albumErrors)}";
+
+        return OperationResult.Ok(message);
     }
 
     public async Task<OperationResult> UpdateTrackAsync(int trackId, TrackCreateDto request,
@@ -317,10 +320,10 @@ public class AdminCatalogService(
         if (string.IsNullOrWhiteSpace(request.Title)) return OperationResult.Fail("Для трека нужно название.");
 
         var artistNames = GetDistinctNames(request.ArtistNames, request.ArtistName);
-        if (!artistNames.Any()) return OperationResult.Fail("Для трека нужен хотя бы один исполнитель.");
+        if (artistNames.Count == 0) return OperationResult.Fail("Для трека нужен хотя бы один исполнитель.");
 
         var artists = await ResolveArtistsAsync(artistNames, ct);
-        if (!artists.Any()) return OperationResult.Fail("Для трека нужен хотя бы один исполнитель.");
+        if (artists.Count == 0) return OperationResult.Fail("Для трека нужен хотя бы один исполнитель.");
 
         var genres = await ResolveGenresAsync(request, ct);
         var category = await ResolveCategoryAsync(request, ct);
@@ -328,32 +331,46 @@ public class AdminCatalogService(
             return OperationResult.Fail("Выбранная категория не найдена.");
 
         var primaryArtist = artists[0];
-        Album? album = null;
-        if (!string.IsNullOrWhiteSpace(request.AlbumTitle))
-        {
-            var norm = request.AlbumTitle.Trim();
-            album = await albumRepository.GetByTitleAndArtistAsync(norm, primaryArtist.Id, ct)
-                    ?? await CreateAlbumAsync(norm, primaryArtist, ct);
-        }
 
-        var duplicate =
-            await trackRepository.FindDuplicateAsync(request.Title, primaryArtist.Id, album?.Id, track.Id, ct);
+        var duplicate = await trackRepository.FindDuplicateAsync(request.Title, primaryArtist.Id, track.Id, ct);
         if (duplicate is not null) return OperationResult.Fail("Такой трек уже есть в каталоге.");
 
         if (!string.IsNullOrWhiteSpace(request.AudioFilePath))
             track.AudioFilePath = await fileStorageService.SaveAsync(request.AudioFilePath, ct);
 
         track.Title = request.Title.Trim();
-        track.AlbumId = album?.Id;
-        track.Album = album;
         track.CategoryId = category?.Id;
         track.Category = category;
         track.DurationSeconds = request.DurationSeconds;
         SyncTrackArtists(track, artists);
         SyncTrackGenres(track, genres);
 
+        var currentAlbumIds = track.TrackAlbums.Select(ta => ta.AlbumId).ToHashSet();
+        var targetAlbumIds = request.AlbumIds.ToHashSet();
+
+        foreach (var aId in currentAlbumIds.Except(targetAlbumIds))
+            await albumRepository.RemoveTrackAsync(aId, track.Id, ct);
+
+        var albumErrors = new List<string>();
+        foreach (var aId in targetAlbumIds.Except(currentAlbumIds))
+        {
+            var validationError = await ValidateTrackArtistsMatchAlbumAsync(aId, artists, ct);
+            if (validationError is not null)
+            {
+                albumErrors.Add(validationError);
+                continue;
+            }
+
+            await albumRepository.AddTrackAsync(aId, track.Id, ct);
+        }
+
         await trackRepository.UpdateAsync(track, ct);
-        return OperationResult.Ok("Трек обновлен.");
+
+        var message = "Трек обновлен.";
+        if (albumErrors.Count > 0)
+            message += $" Не добавлен в некоторые альбомы: {string.Join("; ", albumErrors)}";
+
+        return OperationResult.Ok(message);
     }
 
     public async Task<OperationResult> DeleteTrackAsync(int trackId, CancellationToken ct = default)
@@ -413,18 +430,6 @@ public class AdminCatalogService(
         foreach (var dto in dtos.Where(dto => !string.IsNullOrWhiteSpace(dto.PreviewUrl)))
             dto.PreviewUrl = fileStorageService.GetAbsolutePath(dto.PreviewUrl);
         return dtos;
-    }
-
-    private async Task<Album> CreateAlbumAsync(string title, Artist primaryArtist, CancellationToken ct)
-    {
-        var album = new Album
-        {
-            Title = title,
-            ArtistId = primaryArtist.Id,
-            AlbumArtists = [new AlbumArtist { ArtistId = primaryArtist.Id }]
-        };
-        await albumRepository.AddAsync(album, ct);
-        return album;
     }
 
     private async Task<Category?> ResolveCategoryAsync(TrackCreateDto request, CancellationToken ct)
@@ -516,5 +521,22 @@ public class AdminCatalogService(
                 StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
         return result.Select(n => n.Trim()).Where(n => !string.IsNullOrWhiteSpace(n))
             .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private async Task<string?> ValidateTrackArtistsMatchAlbumAsync(
+        int albumId, IReadOnlyCollection<Artist> trackArtists, CancellationToken ct)
+    {
+        var album = await albumRepository.GetByIdWithDetailsAsync(albumId, ct);
+        if (album is null) return $"Альбом {albumId} не найден.";
+
+        var albumArtistIds = album.AlbumArtists.Select(aa => aa.ArtistId).ToHashSet();
+        var trackArtistIds = trackArtists.Select(a => a.Id).ToHashSet();
+
+        var hasMatch = trackArtistIds.Any(id => albumArtistIds.Contains(id));
+        if (hasMatch) return null;
+        var albumArtistNames = album.AlbumArtists
+            .Where(aa => aa.Artist is not null)
+            .Select(aa => aa.Artist!.Name);
+        return $"«{album.Title}» — артисты альбома: {string.Join(", ", albumArtistNames)}.";
     }
 }

@@ -25,5 +25,9 @@ public interface IMainView
     void ShowMessage(string message, string title = "Music App");
     PlaybackMode CurrentMode { get; }
     void PlayTrack(TrackDto track);
-    event Action? TrackFinished; 
+    event Action? TrackFinished;
+    void SetFilterGenres(IReadOnlyList<GenreDto> genres);
+    void SetFilterArtists(IReadOnlyList<ArtistDto> artists);
+    void SetFilterAlbums(IReadOnlyList<AlbumDto> albums);
+    void SetFilterTitles(IReadOnlyList<string> titles);
 }

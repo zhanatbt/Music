@@ -29,6 +29,10 @@ public class MainPresenter
             await ReloadTracksAsync();
             await ReloadPlaylistsAsync();
             await ReloadSelectedPlaylistTracksAsync();
+
+            _view.SetFilterGenres(await _musicLibraryService.GetGenresAsync());
+            _view.SetFilterArtists(await _musicLibraryService.GetArtistsAsync());
+            _view.SetFilterAlbums(await _musicLibraryService.GetAlbumsAsync());
         });
     }
 
@@ -226,7 +230,7 @@ public class MainPresenter
         }
 
         _currentQueue = (await _musicLibraryService.GetPlaylistTracksAsync(_view.SelectedPlaylistId.Value)).ToList();
-        if (!_currentQueue.Any()) return;
+        if (_currentQueue.Count == 0) return;
 
         // Если режим "Снизу вверх", начинаем с конца
         _currentIndex = (_view.CurrentMode == PlaybackMode.Reverse) ? _currentQueue.Count - 1 : 0;
@@ -243,6 +247,14 @@ public class MainPresenter
             title: _view.TitleFilter,
             artist: _view.ArtistFilter);
         _view.SetTracks(tracks);
+
+        if (string.IsNullOrWhiteSpace(_view.TitleFilter) &&
+            string.IsNullOrWhiteSpace(_view.ArtistFilter) &&
+            string.IsNullOrWhiteSpace(_view.AlbumFilter) &&
+            string.IsNullOrWhiteSpace(_view.GenreFilter))
+        {
+            _view.SetFilterTitles(tracks.Select(t => t.Title).Distinct().OrderBy(x => x).ToList());
+        }
     }
 
     private async Task ReloadPlaylistsAsync()

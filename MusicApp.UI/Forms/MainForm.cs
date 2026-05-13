@@ -14,10 +14,10 @@ public class MainForm : Form, IMainView
     private readonly BindingSource _playlistTracksSource = new();
     private bool _suppressPlaylistSelectionChanged;
 
-    private TextBox _txtTitleFilter = null!;
-    private TextBox _txtArtistFilter = null!;
-    private TextBox _txtAlbumFilter = null!;
-    private TextBox _txtGenreFilter = null!;
+    private ComboBox _cmbTitleFilter = null!;
+    private ComboBox _cmbArtistFilter = null!;
+    private ComboBox _cmbAlbumFilter = null!;
+    private ComboBox _cmbGenreFilter = null!;
     private TextBox _txtNewPlaylist = null!;
     private readonly DataGridView _gridTracks;
     private DataGridView _gridPlaylists = null!;
@@ -40,25 +40,19 @@ public class MainForm : Form, IMainView
 
         // 1. Поля фильтров (Лево)
         header.Controls.Add(MkLabel("Название").WithPos(12, 14));
-        _txtTitleFilter = new TextBox { Left = 98, Top = 12, Width = 200 };
-        header.Controls.Add(_txtTitleFilter);
-
+        _cmbTitleFilter = new ComboBox { Left = 98, Top = 10, Width = 200, DropDownStyle = ComboBoxStyle.DropDown };
         header.Controls.Add(MkLabel("Исполнитель").WithPos(310, 14));
-        _txtArtistFilter = new TextBox { Left = 410, Top = 12, Width = 200 };
-        header.Controls.Add(_txtArtistFilter);
-
+        _cmbArtistFilter = new ComboBox { Left = 410, Top = 10, Width = 200, DropDownStyle = ComboBoxStyle.DropDown };
         header.Controls.Add(MkLabel("Альбом").WithPos(12, 48));
-        _txtAlbumFilter = new TextBox { Left = 98, Top = 46, Width = 200 };
-        header.Controls.Add(_txtAlbumFilter);
-
+        _cmbAlbumFilter = new ComboBox { Left = 98, Top = 44, Width = 200, DropDownStyle = ComboBoxStyle.DropDown };
         header.Controls.Add(MkLabel("Жанр").WithPos(310, 48));
-        _txtGenreFilter = new TextBox { Left = 410, Top = 46, Width = 200 };
-        header.Controls.Add(_txtGenreFilter);
+        _cmbGenreFilter = new ComboBox { Left = 410, Top = 44, Width = 200, DropDownStyle = ComboBoxStyle.DropDown };
 
         // 2. Кнопки поиска (Центр)
         var btnSearch = new Button { Text = "🔍 Поиск", Left = 630, Top = 12, Width = 110, Height = 30 };
-        var btnReset = new Button { Text = "✕ Сброс", Left = 630, Top = 46, Width = 110, Height = 30 };
-        header.Controls.AddRange([btnSearch, btnReset]);
+        header.Controls.AddRange([
+            btnSearch, _cmbTitleFilter, _cmbArtistFilter, _cmbAlbumFilter, _cmbGenreFilter
+        ]);
 
         // 3. Управление плейлистом и режимы (Право)
         // Устанавливаем координаты так, чтобы ничего не накладывалось
@@ -172,19 +166,17 @@ public class MainForm : Form, IMainView
         // --- СОБЫТИЯ ---
         Load += async (_, _) => await _presenter.LoadAsync();
         btnSearch.Click += async (_, _) => await _presenter.SearchAsync();
-        btnReset.Click += async (_, _) => {
-            _txtTitleFilter.Clear(); _txtArtistFilter.Clear();
-            _txtAlbumFilter.Clear(); _txtGenreFilter.Clear();
-            await _presenter.SearchAsync();
-        };
         btnAddToPlaylist.Click += async (_, _) => await _presenter.AddSelectedTrackToPlaylistAsync();
         btnPlayPlaylist.Click += async (_, _) => await _presenter.StartPlaylistPlaybackAsync();
 
         // Двойные клики по таблицам
-        _gridTracks.CellDoubleClick += async (s, e) => {
+        _gridTracks.CellClick += (s, e) => ToggleSelectCell(_gridTracks, e, "TrackSelectColumn");
+        _gridTracks.CellDoubleClick += async (s, e) =>
+        {
             if (e.RowIndex >= 0) await _presenter.PlaySelectedQueueTrackAsync();
         };
-        _gridPlaylistTracks.CellDoubleClick += async (s, e) => {
+        _gridPlaylistTracks.CellDoubleClick += async (s, e) =>
+        {
             if (e.RowIndex >= 0) await _presenter.PlaySelectedPlaylistTrackAsync();
         };
 
@@ -327,25 +319,40 @@ public class MainForm : Form, IMainView
             AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
             FillWeight = 20
         });
-        _gridPlaylistTracks.DataBindingComplete += (_, _) => EnsureSelectColumn(_gridPlaylistTracks, "PlaylistSelectColumn");
+        _gridPlaylistTracks.CellClick += (s, e) => ToggleSelectCell(_gridPlaylistTracks, e, "PlaylistSelectColumn");
+        _gridPlaylistTracks.DataBindingComplete +=
+            (_, _) => EnsureSelectColumn(_gridPlaylistTracks, "PlaylistSelectColumn");
 
         panel.Controls.Add(_gridPlaylistTracks);
         panel.Controls.Add(topPanel);
         return panel;
     }
 
-    public string TitleFilter => _txtTitleFilter.Text;
-    public string ArtistFilter => _txtArtistFilter.Text;
-    public string AlbumFilter => _txtAlbumFilter.Text;
-    public string GenreFilter => _txtGenreFilter.Text;
+    private static void ToggleSelectCell(DataGridView grid, DataGridViewCellEventArgs e, string colName)
+    {
+        if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+        if (grid.Columns[e.ColumnIndex].Name != colName) return;
+        var cell = grid.Rows[e.RowIndex].Cells[colName];
+        cell.Value = !(cell.Value is bool b && b);
+        grid.InvalidateRow(e.RowIndex);
+    }
+
+    public string TitleFilter => _cmbTitleFilter.Text;
+    public string ArtistFilter => _cmbArtistFilter.Text;
+    public string AlbumFilter => _cmbAlbumFilter.Text;
+    public string GenreFilter => _cmbGenreFilter.Text;
 
     public int? SelectedTrackId => _gridTracks.CurrentRow?.DataBoundItem is TrackDto track ? track.Id : null;
     public IReadOnlyList<int> SelectedTrackIds => GetCheckedTrackIds(_gridTracks, "TrackSelectColumn");
 
-    public int? SelectedPlaylistId => _gridPlaylists.CurrentRow?.DataBoundItem is PlaylistDto playlist ? playlist.Id : null;
+    public int? SelectedPlaylistId =>
+        _gridPlaylists.CurrentRow?.DataBoundItem is PlaylistDto playlist ? playlist.Id : null;
 
-    public int? SelectedPlaylistTrackId => _gridPlaylistTracks.CurrentRow?.DataBoundItem is TrackDto track ? track.Id : null;
-    public IReadOnlyList<int> SelectedPlaylistTrackIds => GetCheckedTrackIds(_gridPlaylistTracks, "PlaylistSelectColumn");
+    public int? SelectedPlaylistTrackId =>
+        _gridPlaylistTracks.CurrentRow?.DataBoundItem is TrackDto track ? track.Id : null;
+
+    public IReadOnlyList<int> SelectedPlaylistTrackIds =>
+        GetCheckedTrackIds(_gridPlaylistTracks, "PlaylistSelectColumn");
 
     public string NewPlaylistName => _txtNewPlaylist.Text;
 
@@ -396,6 +403,7 @@ public class MainForm : Form, IMainView
                 {
                     _gridPlaylists.CurrentCell = _gridPlaylists.Rows[i].Cells[0];
                 }
+
                 return;
             }
         }
@@ -463,17 +471,19 @@ public class MainForm : Form, IMainView
         }
     }
 
-    public PlaybackMode CurrentMode => _cmbPlaybackMode.SelectedIndex switch {
+    public PlaybackMode CurrentMode => _cmbPlaybackMode.SelectedIndex switch
+    {
         1 => PlaybackMode.Reverse,
         2 => PlaybackMode.Random,
         _ => PlaybackMode.Normal
     };
-    
+
     private void InitializePlaybackEvents()
     {
-        _player.PlayStateChange += (s, e) => {
+        _player.PlayStateChange += (s, e) =>
+        {
             // 8 = MediaEnded (трек завершен)
-            if (e.newState == 8) 
+            if (e.newState == 8)
             {
                 // Вызываем событие, на которое подписан Презентер
                 this.BeginInvoke(() => TrackFinished?.Invoke());
@@ -490,11 +500,50 @@ public class MainForm : Form, IMainView
         _player.Ctlcontrols.play();
     }
 
-    private static Label MkLabel(string text) => 
+    private static Label MkLabel(string text) =>
         new Label { Text = text, AutoSize = true, ForeColor = Color.White };
+
+    public void SetFilterGenres(IReadOnlyList<GenreDto> genres)
+    {
+        _cmbGenreFilter.Items.Clear();
+        _cmbGenreFilter.Items.Add(string.Empty);
+        foreach (var g in genres) _cmbGenreFilter.Items.Add(g.Name);
+    }
+
+    public void SetFilterArtists(IReadOnlyList<ArtistDto> artists)
+    {
+        _cmbArtistFilter.Items.Clear();
+        _cmbArtistFilter.Items.Add(string.Empty);
+        foreach (var a in artists) _cmbArtistFilter.Items.Add(a.Name);
+    }
+
+    public void SetFilterAlbums(IReadOnlyList<AlbumDto> albums)
+    {
+        _cmbAlbumFilter.Items.Clear();
+        _cmbAlbumFilter.Items.Add(string.Empty);
+        foreach (var a in albums) _cmbAlbumFilter.Items.Add(a.Title);
+    }
+
+    public void SetFilterTitles(IReadOnlyList<string> titles)
+        => PopulateComboBox(_cmbTitleFilter, titles);
+
+    private static void PopulateComboBox(ComboBox cmb, IReadOnlyList<string> items)
+    {
+        if (cmb is null) return;
+        var current = cmb.Text;
+        cmb.Items.Clear();
+        cmb.Items.Add(string.Empty);
+        foreach (var item in items) cmb.Items.Add(item);
+        cmb.Text = current;
+    }
 }
 
-file static class LabelExt 
+file static class LabelExt
 {
-    public static Label WithPos(this Label l, int x, int y) { l.Left = x; l.Top = y; return l; }
+    public static Label WithPos(this Label l, int x, int y)
+    {
+        l.Left = x;
+        l.Top = y;
+        return l;
+    }
 }

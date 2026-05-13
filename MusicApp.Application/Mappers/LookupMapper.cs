@@ -26,6 +26,6 @@ public static class LookupMapper
                 .Select(x => x.Artist!.Name)
                 .OrderBy(x => x))
             : album.Artist?.Name ?? string.Empty,
-        TrackCount = album.Tracks.Count
+        TrackCount = album.TrackAlbums.Count
     };
 }

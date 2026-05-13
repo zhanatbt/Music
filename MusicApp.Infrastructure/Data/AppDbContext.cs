@@ -12,6 +12,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Album> Albums => Set<Album>();
     public DbSet<AlbumArtist> AlbumArtists => Set<AlbumArtist>();
     public DbSet<Track> Tracks => Set<Track>();
+    public DbSet<TrackAlbum> TrackAlbums => Set<TrackAlbum>();
     public DbSet<TrackArtist> TrackArtists => Set<TrackArtist>();
     public DbSet<TrackGenre> TrackGenres => Set<TrackGenre>();
     public DbSet<Playlist> Playlists => Set<Playlist>();
@@ -74,10 +75,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             entity.Property(x => x.Title).HasMaxLength(150).IsRequired();
             entity.Property(x => x.AudioFilePath).HasMaxLength(500);
-            entity.HasOne(x => x.Album).WithMany(x => x.Tracks).HasForeignKey(x => x.AlbumId)
-                .OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(x => x.Category).WithMany(x => x.Tracks).HasForeignKey(x => x.CategoryId)
                 .OnDelete(DeleteBehavior.SetNull);
+            entity.HasMany<Album>()
+                .WithMany()
+                .UsingEntity<TrackAlbum>(
+                    j => j.HasOne(x => x.Album).WithMany(x => x.TrackAlbums).HasForeignKey(x => x.AlbumId)
+                        .OnDelete(DeleteBehavior.Cascade),
+                    j => j.HasOne(x => x.Track).WithMany(x => x.TrackAlbums).HasForeignKey(x => x.TrackId)
+                        .OnDelete(DeleteBehavior.Cascade),
+                    j =>
+                    {
+                        j.HasKey(x => new { x.TrackId, x.AlbumId });
+                        j.ToTable("TrackAlbums");
+                    });
             entity.HasMany(x => x.Artists).WithMany(x => x.Tracks)
                 .UsingEntity<TrackArtist>(
                     j => j.HasOne(x => x.Artist).WithMany(x => x.TrackArtists).HasForeignKey(x => x.ArtistId)

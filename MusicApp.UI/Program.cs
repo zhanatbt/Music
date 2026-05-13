@@ -21,7 +21,7 @@ internal static class Program
         var configuration = BuildConfiguration();
         var appConfiguration = configuration.Get<AppConfiguration>() ?? new AppConfiguration();
         var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? appConfiguration.ConnectionStrings.DefaultConnection;
+                               ?? appConfiguration.ConnectionStrings.DefaultConnection;
 
         using var context = AppDbContextFactory.Create(connectionString);
         var genreRepository = new GenreRepository(context);
@@ -54,7 +54,13 @@ internal static class Program
             playlistRepository,
             new TagLibAudioMetadataReader(),
             fileStorageService);
-        var musicLibraryService = new MusicLibraryService(trackRepository, playlistRepository, fileStorageService);
+        var musicLibraryService = new MusicLibraryService(
+            trackRepository,
+            playlistRepository,
+            fileStorageService,
+            genreRepository,
+            artistRepository,
+            albumRepository);
 
         System.Windows.Forms.Application.Run(new LoginForm(authService, adminCatalogService, musicLibraryService));
     }

@@ -12,4 +12,6 @@ public interface IAlbumRepository
     Task<bool> DeleteByIdAsync(int id, CancellationToken cancellationToken = default);
     Task AddArtistAsync(int albumId, int artistId, CancellationToken cancellationToken = default);
     Task RemoveArtistAsync(int albumId, int artistId, CancellationToken cancellationToken = default);
+    Task AddTrackAsync(int albumId, int trackId, CancellationToken ct = default);
+    Task RemoveTrackAsync(int albumId, int trackId, CancellationToken ct = default);
 }

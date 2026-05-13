@@ -13,15 +13,13 @@ public class TrackRepository(AppDbContext context) : ITrackRepository
     public async Task<Track?> GetByIdAsync(int id, CancellationToken ct = default)
         => await IncludeGraph(context.Tracks).FirstOrDefaultAsync(t => t.Id == id, ct);
 
-    public async Task<Track?> FindDuplicateAsync(string title, int artistId, int? albumId,
-        int? excludeTrackId = null, CancellationToken ct = default)
+    public async Task<Track?> FindDuplicateAsync(string title, int artistId, int? excludeTrackId = null, CancellationToken ct = default)
     {
         var normalized = title.Trim();
         var query = IncludeGraph(context.Tracks).AsQueryable();
         if (excludeTrackId.HasValue) query = query.Where(t => t.Id != excludeTrackId.Value);
         return await query.FirstOrDefaultAsync(
-            t => t.AlbumId == albumId && t.Title == normalized && t.TrackArtists.Any(ta => ta.ArtistId == artistId),
-            ct);
+            t => t.Title == normalized && t.TrackArtists.Any(ta => ta.ArtistId == artistId), ct);
     }
 
     public async Task<IReadOnlyList<Track>> SearchAsync(string? query, int? genreId, int? categoryId,
@@ -30,7 +28,7 @@ public class TrackRepository(AppDbContext context) : ITrackRepository
         var trackQuery = IncludeGraph(context.Tracks).AsQueryable();
         if (!string.IsNullOrWhiteSpace(title)) trackQuery = trackQuery.Where(t => t.Title.Contains(title.Trim()));
         if (!string.IsNullOrWhiteSpace(album))
-            trackQuery = trackQuery.Where(t => t.Album != null && t.Album.Title.Contains(album.Trim()));
+            trackQuery = trackQuery.Where(t => t.TrackAlbums.Any(ta => ta.Album != null && ta.Album.Title.Contains(album.Trim())));
         if (!string.IsNullOrWhiteSpace(artist))
             trackQuery = trackQuery.Where(t =>
                 t.TrackArtists.Any(ta => ta.Artist != null && ta.Artist.Name.Contains(artist.Trim())));
@@ -43,7 +41,7 @@ public class TrackRepository(AppDbContext context) : ITrackRepository
             trackQuery = trackQuery.Where(t =>
                 t.Title.Contains(norm) ||
                 t.TrackArtists.Any(ta => ta.Artist != null && ta.Artist.Name.Contains(norm)) ||
-                (t.Album != null && t.Album.Title.Contains(norm)) ||
+                t.TrackAlbums.Any(ta => ta.Album != null && ta.Album.Title.Contains(norm)) ||
                 t.TrackGenres.Any(tg => tg.Genre != null && tg.Genre.Name.Contains(norm)) ||
                 (t.Category != null && t.Category.Name.Contains(norm)));
         }
@@ -70,7 +68,7 @@ public class TrackRepository(AppDbContext context) : ITrackRepository
 
     private static IQueryable<Track> IncludeGraph(IQueryable<Track> query)
         => query
-            .Include(t => t.Album)
+            .Include(t => t.TrackAlbums).ThenInclude(ta => ta.Album)
             .Include(t => t.TrackArtists).ThenInclude(x => x.Artist)
             .Include(t => t.TrackGenres).ThenInclude(x => x.Genre)
             .Include(t => t.Category)

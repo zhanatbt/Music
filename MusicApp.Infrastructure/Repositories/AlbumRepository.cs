@@ -11,7 +11,7 @@ public class AlbumRepository(AppDbContext context) : IAlbumRepository
         => await context.Albums
             .Include(x => x.AlbumArtists).ThenInclude(x => x.Artist)
             .Include(x => x.Artist)
-            .Include(x => x.Tracks)
+            .Include(x => x.TrackAlbums)
             .OrderBy(x => x.Title)
             .ToListAsync(ct);
 
@@ -19,9 +19,11 @@ public class AlbumRepository(AppDbContext context) : IAlbumRepository
         => await context.Albums
             .Include(x => x.AlbumArtists).ThenInclude(x => x.Artist)
             .Include(x => x.Artist)
-            .Include(x => x.Tracks).ThenInclude(t => t.TrackArtists).ThenInclude(ta => ta.Artist)
-            .Include(x => x.Tracks).ThenInclude(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
-            .Include(x => x.Tracks).ThenInclude(t => t.Category)
+            .Include(x => x.TrackAlbums).ThenInclude(ta => ta.Track).ThenInclude(t => t!.TrackArtists)
+            .ThenInclude(ta2 => ta2.Artist)
+            .Include(x => x.TrackAlbums).ThenInclude(ta => ta.Track).ThenInclude(t => t!.TrackGenres)
+            .ThenInclude(tg => tg.Genre)
+            .Include(x => x.TrackAlbums).ThenInclude(ta => ta.Track).ThenInclude(t => t!.Category)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
 
     public async Task<Album?> GetByTitleAndArtistAsync(string title, int artistId, CancellationToken ct = default)
@@ -65,6 +67,26 @@ public class AlbumRepository(AppDbContext context) : IAlbumRepository
         if (item is not null)
         {
             context.AlbumArtists.Remove(item);
+            await context.SaveChangesAsync(ct);
+        }
+    }
+
+    public async Task AddTrackAsync(int albumId, int trackId, CancellationToken ct = default)
+    {
+        var exists = await context.TrackAlbums.AnyAsync(x => x.AlbumId == albumId && x.TrackId == trackId, ct);
+        if (!exists)
+        {
+            context.TrackAlbums.Add(new TrackAlbum { AlbumId = albumId, TrackId = trackId });
+            await context.SaveChangesAsync(ct);
+        }
+    }
+
+    public async Task RemoveTrackAsync(int albumId, int trackId, CancellationToken ct = default)
+    {
+        var item = await context.TrackAlbums.FirstOrDefaultAsync(x => x.AlbumId == albumId && x.TrackId == trackId, ct);
+        if (item is not null)
+        {
+            context.TrackAlbums.Remove(item);
             await context.SaveChangesAsync(ct);
         }
     }

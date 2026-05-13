@@ -11,7 +11,6 @@ partial class AdminForm
     private TabPage _genresTab = null!;
     private TabPage _artistsTab = null!;
     private TabPage _albumsTab = null!;
-    private Panel _playerHost = null!;
 
     protected override void Dispose(bool disposing)
     {
@@ -64,13 +63,10 @@ partial class AdminForm
 
         _tabControl.Controls.AddRange([_manageTab, _tracksTab, _usersTab, _categoriesTab, _genresTab, _artistsTab, _albumsTab]);
 
-        _playerHost = (Panel)BuildPlayerPanel();
-
         AutoScaleDimensions = new SizeF(7F, 15F);
         AutoScaleMode = AutoScaleMode.Font;
         ClientSize = new Size(1280, 860);
         Controls.Add(_tabControl);
-        Controls.Add(_playerHost);
         Name = "AdminForm";
         StartPosition = FormStartPosition.CenterParent;
         Text = "Music App — Admin Panel";

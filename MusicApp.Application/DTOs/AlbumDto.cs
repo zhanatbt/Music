@@ -6,4 +6,5 @@ public class AlbumDto
     public string Title { get; init; } = string.Empty;
     public string Artists { get; init; } = string.Empty;
     public int TrackCount { get; init; }
+    public override string ToString() => $"{Title} — {Artists}";
 }

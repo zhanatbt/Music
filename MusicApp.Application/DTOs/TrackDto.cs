@@ -10,4 +10,5 @@ public class TrackDto
     public string Category { get; init; } = string.Empty;
     public int DurationSeconds { get; init; }
     public string? PreviewUrl { get; set; }
+    public IReadOnlyList<int> AlbumIds { get; init; } = [];
 }

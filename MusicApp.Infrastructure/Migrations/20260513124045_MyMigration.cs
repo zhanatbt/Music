@@ -90,6 +90,28 @@ namespace MusicApp.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Tracks",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Title = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
+                    CategoryId = table.Column<int>(type: "int", nullable: true),
+                    DurationSeconds = table.Column<int>(type: "int", nullable: false),
+                    AudioFilePath = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Tracks", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Tracks_Categories_CategoryId",
+                        column: x => x.CategoryId,
+                        principalTable: "Categories",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Playlists",
                 columns: table => new
                 {
@@ -134,55 +156,23 @@ namespace MusicApp.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Tracks",
+                name: "TrackAlbums",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Title = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
-                    AlbumId = table.Column<int>(type: "int", nullable: true),
-                    CategoryId = table.Column<int>(type: "int", nullable: true),
-                    DurationSeconds = table.Column<int>(type: "int", nullable: false),
-                    AudioFilePath = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true)
+                    TrackId = table.Column<int>(type: "int", nullable: false),
+                    AlbumId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Tracks", x => x.Id);
+                    table.PrimaryKey("PK_TrackAlbums", x => new { x.TrackId, x.AlbumId });
                     table.ForeignKey(
-                        name: "FK_Tracks_Albums_AlbumId",
+                        name: "FK_TrackAlbums_Albums_AlbumId",
                         column: x => x.AlbumId,
                         principalTable: "Albums",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "FK_Tracks_Categories_CategoryId",
-                        column: x => x.CategoryId,
-                        principalTable: "Categories",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "PlaylistTracks",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    PlaylistId = table.Column<int>(type: "int", nullable: false),
-                    TrackId = table.Column<int>(type: "int", nullable: false),
-                    AddedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_PlaylistTracks", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_PlaylistTracks_Playlists_PlaylistId",
-                        column: x => x.PlaylistId,
-                        principalTable: "Playlists",
-                        principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_PlaylistTracks_Tracks_TrackId",
+                        name: "FK_TrackAlbums_Tracks_TrackId",
                         column: x => x.TrackId,
                         principalTable: "Tracks",
                         principalColumn: "Id",
@@ -231,6 +221,33 @@ namespace MusicApp.Infrastructure.Migrations
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_TrackGenres_Tracks_TrackId",
+                        column: x => x.TrackId,
+                        principalTable: "Tracks",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "PlaylistTracks",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    PlaylistId = table.Column<int>(type: "int", nullable: false),
+                    TrackId = table.Column<int>(type: "int", nullable: false),
+                    AddedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PlaylistTracks", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_PlaylistTracks_Playlists_PlaylistId",
+                        column: x => x.PlaylistId,
+                        principalTable: "Playlists",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_PlaylistTracks_Tracks_TrackId",
                         column: x => x.TrackId,
                         principalTable: "Tracks",
                         principalColumn: "Id",
@@ -287,6 +304,11 @@ namespace MusicApp.Infrastructure.Migrations
                 column: "TrackId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_TrackAlbums_AlbumId",
+                table: "TrackAlbums",
+                column: "AlbumId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_TrackArtists_ArtistId",
                 table: "TrackArtists",
                 column: "ArtistId");
@@ -295,11 +317,6 @@ namespace MusicApp.Infrastructure.Migrations
                 name: "IX_TrackGenres_GenreId",
                 table: "TrackGenres",
                 column: "GenreId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Tracks_AlbumId",
-                table: "Tracks",
-                column: "AlbumId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Tracks_CategoryId",
@@ -323,6 +340,9 @@ namespace MusicApp.Infrastructure.Migrations
                 name: "PlaylistTracks");
 
             migrationBuilder.DropTable(
+                name: "TrackAlbums");
+
+            migrationBuilder.DropTable(
                 name: "TrackArtists");
 
             migrationBuilder.DropTable(
@@ -330,6 +350,9 @@ namespace MusicApp.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "Playlists");
+
+            migrationBuilder.DropTable(
+                name: "Albums");
 
             migrationBuilder.DropTable(
                 name: "Genres");
@@ -341,13 +364,10 @@ namespace MusicApp.Infrastructure.Migrations
                 name: "Users");
 
             migrationBuilder.DropTable(
-                name: "Albums");
+                name: "Artists");
 
             migrationBuilder.DropTable(
                 name: "Categories");
-
-            migrationBuilder.DropTable(
-                name: "Artists");
         }
     }
 }

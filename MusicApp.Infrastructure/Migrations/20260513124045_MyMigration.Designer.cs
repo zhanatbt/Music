@@ -12,7 +12,7 @@ using MusicApp.Infrastructure.Data;
 namespace MusicApp.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260512200009_MyMigration")]
+    [Migration("20260513124045_MyMigration")]
     partial class MyMigration
     {
         /// <inheritdoc />
@@ -192,9 +192,6 @@ namespace MusicApp.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("AlbumId")
-                        .HasColumnType("int");
-
                     b.Property<string>("AudioFilePath")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -212,11 +209,24 @@ namespace MusicApp.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AlbumId");
-
                     b.HasIndex("CategoryId");
 
                     b.ToTable("Tracks");
+                });
+
+            modelBuilder.Entity("MusicApp.Domain.Entities.TrackAlbum", b =>
+                {
+                    b.Property<int>("TrackId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AlbumId")
+                        .HasColumnType("int");
+
+                    b.HasKey("TrackId", "AlbumId");
+
+                    b.HasIndex("AlbumId");
+
+                    b.ToTable("TrackAlbums", (string)null);
                 });
 
             modelBuilder.Entity("MusicApp.Domain.Entities.TrackArtist", b =>
@@ -353,19 +363,31 @@ namespace MusicApp.Infrastructure.Migrations
 
             modelBuilder.Entity("MusicApp.Domain.Entities.Track", b =>
                 {
-                    b.HasOne("MusicApp.Domain.Entities.Album", "Album")
-                        .WithMany("Tracks")
-                        .HasForeignKey("AlbumId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("MusicApp.Domain.Entities.Category", "Category")
                         .WithMany("Tracks")
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("MusicApp.Domain.Entities.TrackAlbum", b =>
+                {
+                    b.HasOne("MusicApp.Domain.Entities.Album", "Album")
+                        .WithMany("TrackAlbums")
+                        .HasForeignKey("AlbumId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MusicApp.Domain.Entities.Track", "Track")
+                        .WithMany("TrackAlbums")
+                        .HasForeignKey("TrackId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Album");
 
-                    b.Navigation("Category");
+                    b.Navigation("Track");
                 });
 
             modelBuilder.Entity("MusicApp.Domain.Entities.TrackArtist", b =>
@@ -410,7 +432,7 @@ namespace MusicApp.Infrastructure.Migrations
                 {
                     b.Navigation("AlbumArtists");
 
-                    b.Navigation("Tracks");
+                    b.Navigation("TrackAlbums");
                 });
 
             modelBuilder.Entity("MusicApp.Domain.Entities.Artist", b =>
@@ -440,6 +462,8 @@ namespace MusicApp.Infrastructure.Migrations
             modelBuilder.Entity("MusicApp.Domain.Entities.Track", b =>
                 {
                     b.Navigation("PlaylistTracks");
+
+                    b.Navigation("TrackAlbums");
 
                     b.Navigation("TrackArtists");
 

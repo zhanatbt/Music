@@ -229,24 +229,6 @@ public class AdminPresenter(IAdminView view, AdminCatalogService catalogService)
         view.SetTracks(tracks);
     }
 
-    public Task PlaySelectedTrackAsync()
-    {
-        if (view.SelectedTrack is null)
-        {
-            view.ShowMessage("Выберите трек.", "Ошибка");
-            return Task.CompletedTask;
-        }
-
-        if (string.IsNullOrWhiteSpace(view.SelectedTrack.PreviewUrl))
-        {
-            view.ShowMessage("У трека нет файла для воспроизведения.", "Информация");
-            return Task.CompletedTask;
-        }
-
-        view.PlayPreview(view.SelectedTrack.PreviewUrl, $"{view.SelectedTrack.Artist} — {view.SelectedTrack.Title}");
-        return Task.CompletedTask;
-    }
-
     public async Task UserSelectionChangedAsync() => await Exec(async () =>
     {
         if (view.SelectedUser is null)
@@ -385,7 +367,10 @@ public class AdminPresenter(IAdminView view, AdminCatalogService catalogService)
         view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
         if (r.Success)
             await Exec(async () =>
-                view.SetAlbumTracks(await catalogService.GetAlbumTracksAsync(view.SelectedAlbumId!.Value)));
+            {
+                view.SetAlbums(await catalogService.GetAlbumsAsync());
+                view.SetAlbumTracks(await catalogService.GetAlbumTracksAsync(view.SelectedAlbumId!.Value));
+            });
     }
 
     public async Task RemoveTrackFromAlbumAsync()
@@ -407,7 +392,10 @@ public class AdminPresenter(IAdminView view, AdminCatalogService catalogService)
         view.ShowMessage(r.Message, r.Success ? "Успех" : "Ошибка");
         if (r.Success)
             await Exec(async () =>
-                view.SetAlbumTracks(await catalogService.GetAlbumTracksAsync(view.SelectedAlbumId!.Value)));
+            {
+                view.SetAlbums(await catalogService.GetAlbumsAsync());
+                view.SetAlbumTracks(await catalogService.GetAlbumTracksAsync(view.SelectedAlbumId!.Value));
+            });
     }
 
     private TrackCreateDto BuildTrackRequest() => new()
@@ -415,7 +403,7 @@ public class AdminPresenter(IAdminView view, AdminCatalogService catalogService)
         Title = view.TrackTitle,
         ArtistName = view.ArtistName,
         ArtistNames = view.SelectedArtistNames,
-        AlbumTitle = view.AlbumTitle,
+        AlbumIds = view.SelectedAlbumIds,
         DurationSeconds = view.DurationSeconds,
         GenreId = view.SelectedGenreId ?? 0,
         GenreName = view.GenreName,
@@ -424,13 +412,13 @@ public class AdminPresenter(IAdminView view, AdminCatalogService catalogService)
         CategoryName = view.CategoryName,
         AudioFilePath = view.ImportedAudioFilePath
     };
-
     private async Task ReloadAsync()
     {
-        var genres = await catalogService.GetGenresAsync();
-        var artists = await catalogService.GetArtistsAsync();
+        var genres     = await catalogService.GetGenresAsync();
+        var artists    = await catalogService.GetArtistsAsync();
         var categories = await catalogService.GetCategoriesAsync();
-        var albums = await catalogService.GetAlbumsAsync();
+        var albums     = await catalogService.GetAlbumsAsync();
+        var tracks     = await catalogService.GetTracksAsync();
 
         view.SetGenres(genres);
         view.SetArtists(artists);
@@ -439,12 +427,18 @@ public class AdminPresenter(IAdminView view, AdminCatalogService catalogService)
         view.SetGenreLookupItems(genres);
         view.SetArtistLookupItems(artists);
         view.SetAlbumArtists(artists);
-        view.SetTracks(await catalogService.GetTracksAsync());
-        view.SetUsers(await catalogService.GetUsersAsync());
+        view.SetTracks(tracks);
         view.SetAlbums(albums);
+        view.SetUsers(await catalogService.GetUsersAsync());
         view.SetAlbumTracks([]);
         view.SetUserPlaylists([]);
         view.SetSelectedUserPlaylistTracks([]);
+
+        view.PopulateTrackSearchFilters(
+            tracks.Select(t => t.Title).Distinct().OrderBy(x => x).ToList(),
+            artists.Select(a => a.Name).ToList(),
+            albums.Select(a => a.Title).ToList(),
+            genres.Select(g => g.Name).ToList());
     }
 
     private async Task Exec(Func<Task> action)

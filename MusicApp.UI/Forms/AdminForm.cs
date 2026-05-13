@@ -28,7 +28,9 @@ public partial class AdminForm : Form, IAdminView
     private readonly HashSet<string> _selectedAlbumArtistNames = new(StringComparer.OrdinalIgnoreCase);
 
     private TextBox _txtTrackTitle = null!;
-    private TextBox _txtAlbum = null!;
+    private CheckedListBox _clbTrackAlbums = null!;
+    private TextBox _txtTrackAlbumSearch = null!;
+    private readonly HashSet<int> _selectedTrackAlbumIds = [];
     private TextBox _txtAudioFilePath = null!;
     private Label _lblDuration = null!;
     private int _durationSeconds;
@@ -38,15 +40,15 @@ public partial class AdminForm : Form, IAdminView
     private TextBox _txtArtistSearch = null!;
     private TextBox _txtGenreSearch = null!;
 
-    private TextBox _txtTrackSearchTitle = null!;
-    private TextBox _txtTrackSearchArtist = null!;
-    private TextBox _txtTrackSearchAlbum = null!;
-    private TextBox _txtTrackSearchGenre = null!;
+    private ComboBox _cmbTrackSearchTitle = null!;
+    private ComboBox _cmbTrackSearchArtist = null!;
+    private ComboBox _cmbTrackSearchAlbum = null!;
+    private ComboBox _cmbTrackSearchGenre = null!;
     private DataGridView _gridTracks = null!;
 
-    private TextBox _txtCategoryLookupSearch = null!;
-    private TextBox _txtGenreLookupSearch = null!;
-    private TextBox _txtArtistLookupSearch = null!;
+    private ComboBox _cmbCategoryLookupSearch = null!;
+    private ComboBox _cmbGenreLookupSearch = null!;
+    private ComboBox _cmbArtistLookupSearch = null!;
     private TextBox _txtNewCategoryName = null!;
     private TextBox _txtNewGenreName = null!;
     private TextBox _txtNewArtistName = null!;
@@ -60,16 +62,13 @@ public partial class AdminForm : Form, IAdminView
     private DataGridView _gridUserPlaylistTracks = null!;
 
     private TextBox _txtNewAlbumTitle = null!;
-    private TextBox _txtAlbumSearch = null!;
+    private ComboBox _cmbAlbumSearch = null!;
     private CheckedListBox _clbAlbumArtists = null!;
     private TextBox _txtAlbumArtistSearch = null!;
     private DataGridView _gridAlbums = null!;
     private DataGridView _gridAlbumTracks = null!;
     private DataGridView _gridAlbumCatalogTracks = null!;
-    private TextBox _txtAlbumCatalogSearch = null!;
-
-    private Label _lblNowPlaying = null!;
-    private AxWindowsMediaPlayer _player = null!;
+    private ComboBox _cmbAlbumCatalogSearch = null!;
 
     private int? _editingTrackId;
     private int? _editingAlbumId;
@@ -94,17 +93,16 @@ public partial class AdminForm : Form, IAdminView
     public string CategoryName => _cmbCategory.Text;
     public string TrackTitle => _txtTrackTitle.Text;
     public string ArtistName => SelectedArtistNames.FirstOrDefault() ?? string.Empty;
-    public string AlbumTitle => _txtAlbum.Text;
     public int DurationSeconds => _durationSeconds;
     public int? SelectedGenreId => _allGenres.FirstOrDefault(x => _selectedGenreNames.Contains(x.Name))?.Id;
     public int? SelectedCategoryId => (_cmbCategory.SelectedItem as CategoryDto)?.Id;
-    public string TrackSearchTitle => _txtTrackSearchTitle.Text;
-    public string TrackSearchArtist => _txtTrackSearchArtist.Text;
-    public string TrackSearchAlbum => _txtTrackSearchAlbum.Text;
-    public string TrackSearchGenre => _txtTrackSearchGenre.Text;
-    public string CategoryLookupSearch => _txtCategoryLookupSearch?.Text ?? string.Empty;
-    public string GenreLookupSearch => _txtGenreLookupSearch?.Text ?? string.Empty;
-    public string ArtistLookupSearch => _txtArtistLookupSearch?.Text ?? string.Empty;
+    public string TrackSearchTitle => _cmbTrackSearchTitle.Text;
+    public string TrackSearchArtist => _cmbTrackSearchArtist.Text;
+    public string TrackSearchAlbum => _cmbTrackSearchAlbum.Text;
+    public string TrackSearchGenre => _cmbTrackSearchGenre.Text;
+    public string CategoryLookupSearch => _cmbCategoryLookupSearch?.Text ?? string.Empty;
+    public string GenreLookupSearch => _cmbGenreLookupSearch?.Text ?? string.Empty;
+    public string ArtistLookupSearch => _cmbArtistLookupSearch?.Text ?? string.Empty;
     public string NewCategoryName => _txtNewCategoryName?.Text ?? string.Empty;
     public string NewGenreName => _txtNewGenreName?.Text ?? string.Empty;
     public string NewArtistName => _txtNewArtistName?.Text ?? string.Empty;
@@ -127,6 +125,7 @@ public partial class AdminForm : Form, IAdminView
     public int? SelectedAlbumId => _gridAlbums?.CurrentRow?.DataBoundItem is AlbumDto al ? al.Id : null;
     public int? SelectedAlbumTrackId => _gridAlbumTracks?.CurrentRow?.DataBoundItem is TrackDto t ? t.Id : null;
     public int? EditingAlbumId => _editingAlbumId;
+    public IReadOnlyList<int> SelectedAlbumIds => _selectedTrackAlbumIds.ToList();
 
     public int? SelectedTrackForAlbumId =>
         _gridAlbumCatalogTracks?.CurrentRow?.DataBoundItem is TrackDto t ? t.Id : null;
@@ -148,17 +147,6 @@ public partial class AdminForm : Form, IAdminView
 
         Load += async (_, _) =>
         {
-            try
-            {
-                ((ISupportInitialize)_player).BeginInit();
-                _player.Enabled = true;
-                ((ISupportInitialize)_player).EndInit();
-            }
-            catch
-            {
-                /* COM may already be initialised */
-            }
-
             if (_presenter is not null) await _presenter.LoadAsync();
         };
     }
@@ -178,7 +166,6 @@ public partial class AdminForm : Form, IAdminView
         _txtAudioFilePath.Text = metadata.FilePath;
         _txtTrackTitle.Text = metadata.Title;
         _txtArtistSearch.Text = metadata.ArtistName;
-        _txtAlbum.Text = metadata.AlbumTitle;
         _importedGenreName = metadata.GenreName;
         _durationSeconds = metadata.DurationSeconds;
         _lblDuration.Text = FormatDuration(_durationSeconds);
@@ -221,19 +208,22 @@ public partial class AdminForm : Form, IAdminView
     public void SetGenreLookupItems(IReadOnlyList<GenreDto> genres)
     {
         _genreLookupAll = genres.ToList();
-        ApplyGenreLookupFilter(_txtGenreLookupSearch?.Text ?? string.Empty);
+        PopulateComboBox(_cmbGenreLookupSearch, genres.Select(g => g.Name).ToList());
+        ApplyGenreLookupFilter(_cmbGenreLookupSearch?.Text ?? string.Empty);
     }
 
     public void SetCategoryLookupItems(IReadOnlyList<CategoryDto> categories)
     {
         _categoryLookupAll = categories.ToList();
-        ApplyCategoryLookupFilter(_txtCategoryLookupSearch?.Text ?? string.Empty);
+        PopulateComboBox(_cmbCategoryLookupSearch, categories.Select(c => c.Name).ToList());
+        ApplyCategoryLookupFilter(_cmbCategoryLookupSearch?.Text ?? string.Empty);
     }
 
     public void SetArtistLookupItems(IReadOnlyList<ArtistDto> artists)
     {
         _artistLookupAll = artists.ToList();
-        ApplyArtistLookupFilter(_txtArtistLookupSearch?.Text ?? string.Empty);
+        PopulateComboBox(_cmbArtistLookupSearch, artists.Select(a => a.Name).ToList());
+        ApplyArtistLookupFilter(_cmbArtistLookupSearch?.Text ?? string.Empty);
     }
 
     public void SetCategories(IReadOnlyList<CategoryDto> categories)
@@ -249,7 +239,9 @@ public partial class AdminForm : Form, IAdminView
         _allCatalogTracks = tracks.ToList();
         _tracksSource.DataSource = tracks;
         if (_gridTracks is not null) _gridTracks.DataSource = _tracksSource;
-        ApplyAlbumCatalogTrackFilter(_txtAlbumCatalogSearch?.Text ?? string.Empty);
+        PopulateComboBox(_cmbAlbumCatalogSearch,
+            tracks.Select(t => t.Title).Distinct().OrderBy(x => x).ToList());
+        ApplyAlbumCatalogTrackFilter();
     }
 
     public void SetUsers(IReadOnlyList<UserAdminDto> users)
@@ -273,9 +265,12 @@ public partial class AdminForm : Form, IAdminView
 
     public void SetAlbums(IReadOnlyList<AlbumDto> albums)
     {
+        var selectedId = SelectedAlbumId;
         _allAlbums = albums.ToList();
         _suppressAlbumSelectionChanged = true;
-        ApplyAlbumFilter(_txtAlbumSearch?.Text ?? string.Empty);
+        PopulateComboBox(_cmbAlbumSearch, albums.Select(a => a.Title).ToList());
+        ApplyAlbumFilter(_cmbAlbumSearch?.Text ?? string.Empty);
+        if (selectedId.HasValue) RestoreAlbumSelection(selectedId.Value);
         _suppressAlbumSelectionChanged = false;
     }
 
@@ -310,23 +305,6 @@ public partial class AdminForm : Form, IAdminView
         ApplyAlbumArtistFilter(_txtAlbumArtistSearch?.Text ?? string.Empty);
     }
 
-    public void PlayPreview(string previewUrl, string trackTitle)
-    {
-        try
-        {
-            _lblNowPlaying.Text = $"▶  {trackTitle}";
-            var url = previewUrl;
-            if (Path.IsPathRooted(previewUrl) && !previewUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
-                url = new Uri(previewUrl).AbsoluteUri;
-            _player.URL = url;
-            _player.Ctlcontrols.play();
-        }
-        catch (Exception ex)
-        {
-            ShowMessage($"Ошибка воспроизведения: {ex.Message}", "Ошибка");
-        }
-    }
-
     public void ShowMessage(string message, string title = "Music App")
         => MessageBox.Show(this, message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
 
@@ -341,7 +319,9 @@ public partial class AdminForm : Form, IAdminView
         _selectedArtistNames.Clear();
         _txtArtistSearch.Clear();
         ApplyArtistFilter(string.Empty);
-        _txtAlbum.Clear();
+        _selectedTrackAlbumIds.Clear();
+        _txtTrackAlbumSearch?.Clear();
+        ApplyTrackAlbumFilter(string.Empty);
         _txtAudioFilePath.Clear();
         _durationSeconds = 0;
         _lblDuration.Text = "— сек";
@@ -352,7 +332,10 @@ public partial class AdminForm : Form, IAdminView
     {
         _editingTrackId = track.Id;
         _txtTrackTitle.Text = track.Title;
-        _txtAlbum.Text = track.Album;
+        _selectedTrackAlbumIds.Clear();
+        foreach (var id in track.AlbumIds)
+            _selectedTrackAlbumIds.Add(id);
+        ApplyTrackAlbumFilter(string.Empty);
         _durationSeconds = track.DurationSeconds;
         _lblDuration.Text = FormatDuration(_durationSeconds);
         _txtAudioFilePath.Clear();
@@ -406,9 +389,6 @@ public partial class AdminForm : Form, IAdminView
         fields.Controls.Add(MkLabel("Трек"), 0, 1);
         _txtTrackTitle = new TextBox { Dock = DockStyle.Fill, MinimumSize = new Size(220, 0) };
         fields.Controls.Add(_txtTrackTitle, 1, 1);
-        fields.Controls.Add(MkLabel("Альбом"), 2, 1);
-        _txtAlbum = new TextBox { Dock = DockStyle.Fill, MinimumSize = new Size(220, 0) };
-        fields.Controls.Add(_txtAlbum, 3, 1);
 
         fields.Controls.Add(MkLabel("Категория"), 0, 2);
         _cmbCategory = new ComboBox
@@ -442,6 +422,9 @@ public partial class AdminForm : Form, IAdminView
         selLayout.Controls.Add(
             BuildSelectionPanel("Жанры", "Поиск жанра…", out _txtGenreSearch, out _clbGenres, ApplyGenreFilter,
                 GenreItemCheckChanged), 1, 0);
+        selLayout.ColumnCount = 3;
+        selLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33));
+        selLayout.Controls.Add(BuildAlbumSelectionPanel(), 2, 0);
         top.Controls.Add(selLayout, 0, 1);
 
         top.Controls.Add(new Label
@@ -490,38 +473,86 @@ public partial class AdminForm : Form, IAdminView
         return root;
     }
 
+    private GroupBox BuildAlbumSelectionPanel()
+    {
+        var group = new GroupBox { Text = "Альбомы (опционально)", Dock = DockStyle.Fill, Padding = new Padding(10) };
+        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        _txtTrackAlbumSearch = new TextBox { Dock = DockStyle.Top, PlaceholderText = "Поиск альбома…" };
+        _clbTrackAlbums = new CheckedListBox
+            { Dock = DockStyle.Fill, CheckOnClick = true, IntegralHeight = false, MinimumSize = new Size(0, 120) };
+        _txtTrackAlbumSearch.TextChanged += (_, _) => ApplyTrackAlbumFilter(_txtTrackAlbumSearch.Text);
+        _clbTrackAlbums.ItemCheck += TrackAlbumItemCheckChanged;
+        layout.Controls.Add(_txtTrackAlbumSearch, 0, 0);
+        layout.Controls.Add(_clbTrackAlbums, 0, 1);
+        group.Controls.Add(layout);
+        return group;
+    }
+
+    private void ApplyTrackAlbumFilter(string f)
+    {
+        if (_clbTrackAlbums is null) return;
+        var src = string.IsNullOrWhiteSpace(f)
+            ? _allAlbums
+            : _allAlbums.Where(x => x.Title.Contains(f, StringComparison.OrdinalIgnoreCase) ||
+                                    x.Artists.Contains(f, StringComparison.OrdinalIgnoreCase)).ToList();
+        _clbTrackAlbums.BeginUpdate();
+        _clbTrackAlbums.Items.Clear();
+        foreach (var idx in from album in src
+                 let idx = _clbTrackAlbums.Items.Add(album)
+                 where _selectedTrackAlbumIds.Contains(album.Id)
+                 select idx)
+        {
+            _clbTrackAlbums.SetItemChecked(idx, true);
+        }
+
+        _clbTrackAlbums.EndUpdate();
+    }
+
+    private void TrackAlbumItemCheckChanged(object? sender, ItemCheckEventArgs e)
+    {
+        if (_clbTrackAlbums.Items[e.Index] is AlbumDto a)
+        {
+            if (e.NewValue == CheckState.Checked) _selectedTrackAlbumIds.Add(a.Id);
+            else _selectedTrackAlbumIds.Remove(a.Id);
+        }
+    }
+
     private Control BuildTracksLayout()
     {
         var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
-        var searchPanel = new Panel { Dock = DockStyle.Top, Height = 100 };
+        var searchPanel = new Panel { Dock = DockStyle.Top, Height = 76 };
 
         searchPanel.Controls.Add(MkLabel("Название").WithPos(0, 10));
-        _txtTrackSearchTitle = new TextBox { Left = 0, Top = 32, Width = 240 };
-        searchPanel.Controls.Add(MkLabel("Исполнитель").WithPos(260, 10));
-        _txtTrackSearchArtist = new TextBox { Left = 260, Top = 32, Width = 240 };
-        searchPanel.Controls.Add(MkLabel("Альбом").WithPos(520, 10));
-        _txtTrackSearchAlbum = new TextBox { Left = 520, Top = 32, Width = 240 };
-        searchPanel.Controls.Add(MkLabel("Жанр").WithPos(780, 10));
-        _txtTrackSearchGenre = new TextBox { Left = 780, Top = 32, Width = 180 };
+        _cmbTrackSearchTitle = new ComboBox { Left = 0, Top = 30, Width = 240, DropDownStyle = ComboBoxStyle.DropDown };
+        searchPanel.Controls.Add(_cmbTrackSearchTitle);
 
-        var btnSearch = new Button { Text = "🔍 Поиск", Left = 970, Top = 32, Width = 110, Height = 30 };
-        var btnReset = new Button { Text = "✕ Сбросить", Left = 1090, Top = 32, Width = 110, Height = 30 };
-        var btnPlay = new Button { Text = "▶ Слушать", Left = 12, Top = 64, Width = 180, Height = 30 };
+        searchPanel.Controls.Add(MkLabel("Исполнитель").WithPos(260, 10));
+        _cmbTrackSearchArtist = new ComboBox
+            { Left = 260, Top = 30, Width = 240, DropDownStyle = ComboBoxStyle.DropDown };
+        searchPanel.Controls.Add(_cmbTrackSearchArtist);
+
+        searchPanel.Controls.Add(MkLabel("Альбом").WithPos(520, 10));
+        _cmbTrackSearchAlbum = new ComboBox
+            { Left = 520, Top = 30, Width = 240, DropDownStyle = ComboBoxStyle.DropDown };
+        searchPanel.Controls.Add(_cmbTrackSearchAlbum);
+
+        searchPanel.Controls.Add(MkLabel("Жанр").WithPos(780, 10));
+        _cmbTrackSearchGenre = new ComboBox
+            { Left = 780, Top = 30, Width = 180, DropDownStyle = ComboBoxStyle.DropDown };
+        searchPanel.Controls.Add(_cmbTrackSearchGenre);
+
+        var btnSearch = new Button { Text = "🔍 Поиск", Left = 970, Top = 30, Width = 110, Height = 30 };
+        var btnReset = new Button { Text = "✕ Сбросить", Left = 1090, Top = 30, Width = 110, Height = 30 };
         btnReset.BackColor = Color.FromArgb(70, 70, 72);
-        searchPanel.Controls.AddRange([
-            _txtTrackSearchTitle, _txtTrackSearchArtist,
-            _txtTrackSearchAlbum, _txtTrackSearchGenre, btnSearch, btnReset, btnPlay
-        ]);
+        searchPanel.Controls.AddRange([btnSearch, btnReset]);
 
         _gridTracks = new DataGridView
         {
-            Dock = DockStyle.Fill,
-            ReadOnly = true,
-            AutoGenerateColumns = true,
+            Dock = DockStyle.Fill, ReadOnly = true, AutoGenerateColumns = true,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-            MultiSelect = false,
-            AllowUserToAddRows = false,
-            DataSource = _tracksSource
+            MultiSelect = false, AllowUserToAddRows = false, DataSource = _tracksSource
         };
         panel.Controls.Add(_gridTracks);
         panel.Controls.Add(searchPanel);
@@ -532,15 +563,11 @@ public partial class AdminForm : Form, IAdminView
         };
         btnReset.Click += async (_, _) =>
         {
-            _txtTrackSearchTitle.Clear();
-            _txtTrackSearchArtist.Clear();
-            _txtTrackSearchAlbum.Clear();
-            _txtTrackSearchGenre.Clear();
+            _cmbTrackSearchTitle.Text = string.Empty;
+            _cmbTrackSearchArtist.Text = string.Empty;
+            _cmbTrackSearchAlbum.Text = string.Empty;
+            _cmbTrackSearchGenre.Text = string.Empty;
             if (_presenter is not null) await _presenter.SearchTracksAsync();
-        };
-        btnPlay.Click += async (_, _) =>
-        {
-            if (_presenter is not null) await _presenter.PlaySelectedTrackAsync();
         };
         return panel;
     }
@@ -661,9 +688,9 @@ public partial class AdminForm : Form, IAdminView
 
         var albumSearchBar = new FlowLayoutPanel
             { Dock = DockStyle.Top, AutoSize = true, WrapContents = false, Margin = new Padding(0, 4, 0, 4) };
-        _txtAlbumSearch = new TextBox { Width = 360, PlaceholderText = "Поиск альбома…" };
-        _txtAlbumSearch.TextChanged += (_, _) => ApplyAlbumFilter(_txtAlbumSearch.Text);
-        albumSearchBar.Controls.Add(_txtAlbumSearch);
+        _cmbAlbumSearch = new ComboBox { Width = 360, DropDownStyle = ComboBoxStyle.DropDown };
+        _cmbAlbumSearch.TextChanged += (_, _) => ApplyAlbumFilter(_cmbAlbumSearch.Text);
+        albumSearchBar.Controls.Add(_cmbAlbumSearch);
         topPanel.Controls.Add(albumSearchBar, 0, 1);
 
         _gridAlbums = CreateGrid(_albumsSource);
@@ -679,27 +706,42 @@ public partial class AdminForm : Form, IAdminView
         };
 
         var albumTracksPanel = new Panel { Dock = DockStyle.Fill };
-        var albumTracksHeader = new Panel { Dock = DockStyle.Top, Height = 40 };
-        albumTracksHeader.Controls.Add(MkLabel("Треки в альбоме").WithPos(4, 10));
+
         var btnRemoveFromAlbum = new Button
         {
-            Text = "➖ Убрать из альбома", Left = 220, Top = 6, Width = 180, Height = 28, Anchor = AnchorStyles.Right
+            Text = "➖ Убрать трек из альбома",
+            Dock = DockStyle.Bottom,
+            Height = 34,
+            BackColor = Color.FromArgb(180, 40, 40)
         };
-        albumTracksHeader.Controls.Add(btnRemoveFromAlbum);
+
+        var albumTracksLabel = new Label
+        {
+            Text = "Треки в альбоме",
+            Dock = DockStyle.Top,
+            Height = 28,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Padding = new Padding(4, 0, 0, 0),
+            Font = new Font("Segoe UI", 9f, FontStyle.Bold)
+        };
+
         _gridAlbumTracks = CreateGrid(_albumTracksSource);
+        _gridAlbumTracks.Dock = DockStyle.Fill;
+        
         albumTracksPanel.Controls.Add(_gridAlbumTracks);
-        albumTracksPanel.Controls.Add(albumTracksHeader);
+        albumTracksPanel.Controls.Add(albumTracksLabel);
+        albumTracksPanel.Controls.Add(btnRemoveFromAlbum);
+        
         bottomSplit.Panel1.Controls.Add(albumTracksPanel);
 
         var pickerPanel = new Panel { Dock = DockStyle.Fill };
         var pickerHeader = new Panel { Dock = DockStyle.Top, Height = 70 };
         pickerHeader.Controls.Add(MkLabel("Добавить трек из каталога:").WithPos(4, 4));
-        _txtAlbumCatalogSearch = new TextBox
-            { Left = 4, Top = 24, Width = 320, PlaceholderText = "Поиск по названию/артисту…" };
-        _txtAlbumCatalogSearch.TextChanged += (_, _) => ApplyAlbumCatalogTrackFilter(_txtAlbumCatalogSearch.Text);
+        _cmbAlbumCatalogSearch = new ComboBox { Left = 4, Top = 24, Width = 320, DropDownStyle = ComboBoxStyle.DropDown};
+        _cmbAlbumCatalogSearch.TextChanged += (_, _) => ApplyAlbumCatalogTrackFilter();
         var btnAddToAlbum = new Button
             { Text = "➕ Добавить выбранный", Left = 332, Top = 22, Width = 200, Height = 28 };
-        pickerHeader.Controls.AddRange([_txtAlbumCatalogSearch, btnAddToAlbum]);
+        pickerHeader.Controls.AddRange([_cmbAlbumCatalogSearch, btnAddToAlbum]);
         _gridAlbumCatalogTracks = CreateGrid(_albumCatalogTracksSource);
         pickerPanel.Controls.Add(_gridAlbumCatalogTracks);
         pickerPanel.Controls.Add(pickerHeader);
@@ -732,7 +774,7 @@ public partial class AdminForm : Form, IAdminView
 
     private Control BuildGenreCatalogLayout() => BuildLookupTab(
         "Поиск жанра…", "Новый жанр / новое название",
-        out _txtGenreLookupSearch, out _txtNewGenreName, out _gridGenreLookup, _genreLookupSource,
+        out _cmbGenreLookupSearch, out _txtNewGenreName, out _gridGenreLookup, _genreLookupSource,
         async () =>
         {
             if (_presenter is not null) await _presenter.AddGenreLookupAsync();
@@ -749,7 +791,7 @@ public partial class AdminForm : Form, IAdminView
 
     private Control BuildCategoryCatalogLayout() => BuildLookupTab(
         "Поиск категории…", "Новая категория / новое название",
-        out _txtCategoryLookupSearch, out _txtNewCategoryName, out _gridCategoryLookup, _categoryLookupSource,
+        out _cmbCategoryLookupSearch, out _txtNewCategoryName, out _gridCategoryLookup, _categoryLookupSource,
         async () =>
         {
             if (_presenter is not null) await _presenter.AddCategoryLookupAsync();
@@ -766,7 +808,7 @@ public partial class AdminForm : Form, IAdminView
 
     private Control BuildArtistCatalogLayout() => BuildLookupTab(
         "Поиск исполнителя…", "Новый исполнитель / новое имя",
-        out _txtArtistLookupSearch, out _txtNewArtistName, out _gridArtistLookup, _artistLookupSource,
+        out _cmbArtistLookupSearch, out _txtNewArtistName, out _gridArtistLookup, _artistLookupSource,
         async () =>
         {
             if (_presenter is not null) await _presenter.AddArtistLookupAsync();
@@ -783,14 +825,18 @@ public partial class AdminForm : Form, IAdminView
 
     private static Control BuildLookupTab(
         string searchPlaceholder, string inputPlaceholder,
-        out TextBox txtSearch, out TextBox txtNew,
+        out ComboBox cmbSearch, out TextBox txtNew,
         out DataGridView grid, BindingSource source,
         Func<Task> onAdd, Func<Task> onRename, Func<Task> onDelete,
         Action<string> onFilterChanged)
     {
         var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
 
-        var search = new TextBox { Left = 12, Top = 12, Width = 360, PlaceholderText = searchPlaceholder };
+        var search = new ComboBox
+        {
+            Left = 12, Top = 12, Width = 360,
+            DropDownStyle = ComboBoxStyle.DropDown
+        };
         search.TextChanged += (_, _) => onFilterChanged(search.Text);
 
         var newItem = new TextBox { Left = 12, Top = 48, Width = 260, PlaceholderText = inputPlaceholder };
@@ -821,37 +867,10 @@ public partial class AdminForm : Form, IAdminView
         };
 
         panel.Controls.AddRange([search, newItem, btnAdd, btnRename, btnDelete, dg]);
-        txtSearch = search;
+        cmbSearch = search;
         txtNew = newItem;
         grid = dg;
         return panel;
-    }
-
-    private Control BuildPlayerPanel()
-    {
-        _player = new AxWindowsMediaPlayer();
-        _player.Enabled = true;
-        _player.Dock = DockStyle.Fill;
-
-        _lblNowPlaying = new Label
-        {
-            Dock = DockStyle.Top,
-            Height = 26,
-            Text = "▶  ничего не выбрано",
-            ForeColor = AppleMusicTheme.Accent,
-            Font = new Font("Segoe UI", 10f, FontStyle.Bold)
-        };
-
-        var pp = new Panel
-        {
-            Dock = DockStyle.Bottom,
-            Height = 140,
-            Padding = new Padding(12),
-            BackColor = Color.FromArgb(28, 28, 30)
-        };
-        pp.Controls.Add(_player);
-        pp.Controls.Add(_lblNowPlaying);
-        return pp;
     }
 
     private void ApplyGenreFilter(string f)
@@ -912,14 +931,27 @@ public partial class AdminForm : Form, IAdminView
     private void ApplyAlbumFilter(string f)
         => _albumsSource.DataSource = string.IsNullOrWhiteSpace(f)
             ? _allAlbums
-            : _allAlbums.Where(x => x.Title.Contains(f, StringComparison.OrdinalIgnoreCase) ||
-                                    x.Artists.Contains(f, StringComparison.OrdinalIgnoreCase)).ToList();
+            : _allAlbums.Where(x =>
+                x.Title.Contains(f, StringComparison.OrdinalIgnoreCase) ||
+                x.Artists.Contains(f, StringComparison.OrdinalIgnoreCase)).ToList();
 
-    private void ApplyAlbumCatalogTrackFilter(string f)
-        => _albumCatalogTracksSource.DataSource = string.IsNullOrWhiteSpace(f)
-            ? _allCatalogTracks
-            : _allCatalogTracks.Where(x => x.Title.Contains(f, StringComparison.OrdinalIgnoreCase) ||
-                                           x.Artist.Contains(f, StringComparison.OrdinalIgnoreCase)).ToList();
+    private void ApplyAlbumCatalogTrackFilter(string? f = null)
+    {
+        f ??= _cmbAlbumCatalogSearch?.Text ?? string.Empty;
+
+        var albumArtistNames = GetSelectedAlbumArtistNames();
+        var filtered = _allCatalogTracks.AsEnumerable();
+        if (albumArtistNames.Count > 0)
+            filtered = filtered.Where(t => albumArtistNames.Any(an =>
+                t.Artist.Contains(an, StringComparison.OrdinalIgnoreCase)));
+
+        if (!string.IsNullOrWhiteSpace(f))
+            filtered = filtered.Where(x =>
+                x.Title.Contains(f, StringComparison.OrdinalIgnoreCase) ||
+                x.Artist.Contains(f, StringComparison.OrdinalIgnoreCase));
+
+        _albumCatalogTracksSource.DataSource = filtered.ToList();
+    }
 
     private void TryCheckArtistByName(string? name)
     {
@@ -1085,6 +1117,7 @@ public partial class AdminForm : Form, IAdminView
     private async void GridAlbums_SelectionChanged(object? sender, EventArgs e)
     {
         if (_suppressAlbumSelectionChanged) return;
+        ApplyAlbumCatalogTrackFilter();
         if (_presenter is not null) await _presenter.AlbumSelectionChangedAsync();
     }
 
@@ -1105,6 +1138,59 @@ public partial class AdminForm : Form, IAdminView
     }
 
     private static Label MkLabel(string text) => new() { Text = text, Anchor = AnchorStyles.Left, AutoSize = true };
+    
+    private void RestoreAlbumSelection(int albumId)
+    {
+        for (var i = 0; i < _gridAlbums.Rows.Count; i++)
+        {
+            if (_gridAlbums.Rows[i].DataBoundItem is AlbumDto a && a.Id == albumId)
+            {
+                _gridAlbums.ClearSelection();
+                _gridAlbums.Rows[i].Selected = true;
+                if (_gridAlbums.Rows[i].Cells.Count > 0)
+                    _gridAlbums.CurrentCell = _gridAlbums.Rows[i].Cells[0];
+                return;
+            }
+        }
+    }
+
+    private IReadOnlyList<string> GetSelectedAlbumArtistNames()
+    {
+        if (_gridAlbums?.CurrentRow?.DataBoundItem is not AlbumDto album) return [];
+        return album.Artists.Split([',', ';'],
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    private static void PopulateComboBox(ComboBox? cmb, IReadOnlyList<string> items)
+    {
+        if (cmb is null) return;
+        var current = cmb.Text;
+        cmb.Items.Clear();
+        cmb.Items.Add(string.Empty);
+        foreach (var item in items) cmb.Items.Add(item);
+        cmb.Text = current;
+    }
+    
+    public void PopulateTrackSearchFilters(IReadOnlyList<string> titles, IReadOnlyList<string> artists,
+        IReadOnlyList<string> albums, IReadOnlyList<string> genres)
+    {
+        PopulateComboBox(_cmbTrackSearchTitle, titles);
+        PopulateComboBox(_cmbTrackSearchArtist, artists);
+        PopulateComboBox(_cmbTrackSearchAlbum, albums);
+        PopulateComboBox(_cmbTrackSearchGenre, genres);
+    }
+
+    public void PopulateAlbumSearch(IReadOnlyList<string> titles)
+        => PopulateComboBox(_cmbAlbumSearch, titles);
+
+    public void PopulateCategorySearch(IReadOnlyList<string> names)
+        => PopulateComboBox(_cmbCategoryLookupSearch, names);
+
+    public void PopulateGenreSearch(IReadOnlyList<string> names)
+        => PopulateComboBox(_cmbGenreLookupSearch, names);
+
+    public void PopulateArtistSearch(IReadOnlyList<string> names)
+        => PopulateComboBox(_cmbArtistLookupSearch, names);
 }
 
 file static class LabelExt

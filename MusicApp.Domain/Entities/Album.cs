@@ -8,6 +8,6 @@ public class Album
     public int ArtistId { get; set; }
 
     public Artist? Artist { get; set; }
-    public ICollection<Track> Tracks { get; set; } = new List<Track>();
+    public ICollection<TrackAlbum> TrackAlbums { get; set; } = new List<TrackAlbum>();
     public ICollection<AlbumArtist> AlbumArtists { get; set; } = new List<AlbumArtist>();
 }

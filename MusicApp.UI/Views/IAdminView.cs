@@ -10,7 +10,7 @@ public interface IAdminView
     string CategoryName { get; }
     string TrackTitle { get; }
     string ArtistName { get; }
-    string AlbumTitle { get; }
+    IReadOnlyList<int> SelectedAlbumIds { get; }
     int DurationSeconds { get; }
     int? SelectedGenreId { get; }
     int? SelectedCategoryId { get; }
@@ -62,6 +62,11 @@ public interface IAdminView
     void ClearNewArtistInput();
     void ClearAlbumFields();
     void LoadAlbumIntoEditor(AlbumDto album);
-    void PlayPreview(string previewUrl, string trackTitle);
     void ShowMessage(string message, string title = "Music App");
+    void PopulateTrackSearchFilters(IReadOnlyList<string> titles, IReadOnlyList<string> artists,
+        IReadOnlyList<string> albums, IReadOnlyList<string> genres);
+    void PopulateAlbumSearch(IReadOnlyList<string> titles);
+    void PopulateCategorySearch(IReadOnlyList<string> names);
+    void PopulateGenreSearch(IReadOnlyList<string> names);
+    void PopulateArtistSearch(IReadOnlyList<string> names);
 }
